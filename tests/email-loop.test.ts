@@ -41,6 +41,7 @@ describe('Email Loop Detection', () => {
 
   it('should detect auto-submitted header', () => {
     const email = createTestEmail({
+      from: 'user@external.com', // Use external domain to avoid same-domain check
       headers: { 'auto-submitted': 'auto-replied' },
     });
     const result = detectEmailLoop(email);
@@ -52,6 +53,7 @@ describe('Email Loop Detection', () => {
 
   it('should detect x-auto-response-suppress header', () => {
     const email = createTestEmail({
+      from: 'user@external.com', // Use external domain to avoid same-domain check
       headers: { 'x-auto-response-suppress': 'All' },
     });
     const result = detectEmailLoop(email);
@@ -63,6 +65,7 @@ describe('Email Loop Detection', () => {
 
   it('should detect excessive Re: prefixes', () => {
     const email = createTestEmail({
+      from: 'user@external.com', // Use external domain to avoid same-domain check
       subject: 'Re: Re: Re: Original Subject',
     });
     const result = detectEmailLoop(email);

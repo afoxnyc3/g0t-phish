@@ -2,14 +2,15 @@
 import { EmailInput, EmailLoopCheck } from '@/types/email';
 import { logger } from '@/utils/logger';
 
-const AGENT_EMAIL = process.env.RESEND_AGENT_EMAIL!;
-const AGENT_DOMAIN = AGENT_EMAIL?.split('@')[1];
-
 /**
  * LAYER 1: Email loop detection
  * Checks if email is from our own agent to prevent infinite loops
  */
 export function detectEmailLoop(email: EmailInput): EmailLoopCheck {
+  // Get agent email and domain from env (at runtime, not module load)
+  const AGENT_EMAIL = process.env.RESEND_AGENT_EMAIL!;
+  const AGENT_DOMAIN = AGENT_EMAIL?.split('@')[1];
+
   const checks = {
     selfReply: false,
     sameDomain: false,
@@ -78,7 +79,10 @@ export function detectEmailLoop(email: EmailInput): EmailLoopCheck {
   }
 
   // Check 4: Subject line patterns (Re: Re: Re: ...)
-  const reCount = (email.subject.match(/^(Re:\s*)+/i) || []).join('').match(/Re:/gi)?.length || 0;
+  // Count consecutive "Re:" at the start of the subject
+  const reMatches = email.subject.match(/^(Re:\s*)+/i);
+  const reCount = reMatches ? (reMatches[0].match(/Re:/gi) || []).length : 0;
+
   if (reCount >= 3) {
     logger.warn('Email loop detected: excessive Re: in subject', {
       from: fromAddress,

@@ -70,10 +70,18 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
       throw new Error('Unexpected response format from Claude');
     }
 
-    // Parse JSON response
+    // Parse JSON response (strip markdown code blocks if present)
     let analysis: Omit<EmailAnalysis, 'metadata'>;
     try {
-      analysis = JSON.parse(textContent.text);
+      // Remove markdown code blocks (```json ... ```)
+      let jsonText = textContent.text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*\n/, '').replace(/\n```\s*$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*\n/, '').replace(/\n```\s*$/, '');
+      }
+
+      analysis = JSON.parse(jsonText);
     } catch (parseError) {
       logger.error('Failed to parse Claude response', {
         response: textContent.text,

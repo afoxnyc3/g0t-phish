@@ -1,0 +1,21 @@
+{
+  "type": "email.received",
+  "created_at": "2025-10-24T03:02:00.000Z",
+  "data": {
+    "email_id": "test-67890",
+    "from": "john@example.com",
+    "to": ["alert@inbound.g0tphish.com"],
+    "subject": "Can you check this suspicious email for me?",
+    "text": "Hi,\n\nI received this email and I'm not sure if it's legitimate. Can you analyze it?\n\nBest regards,\nJohn",
+    "html": "<p>Hi,</p><p>I received this email and I'm not sure if it's legitimate. Can you analyze it?</p><p>Best regards,<br>John</p>",
+    "headers": {
+      "received-spf": "pass",
+      "dkim": "pass",
+      "dmarc": "pass",
+      "from": "john@example.com",
+      "to": "alert@inbound.g0tphish.com",
+      "subject": "Can you check this suspicious email for me?",
+      "date": "Wed, 24 Oct 2025 03:02:00 GMT"
+    }
+  }
+}

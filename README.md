@@ -2,7 +2,7 @@
 
 **AI-Powered Email Phishing Detection Agent**
 
-An automated phishing detection service that analyzes suspicious emails using Claude AI and returns instant security assessments.
+Forward suspicious emails and receive instant AI-powered security analysis in 2-3 seconds.
 
 ![Status](https://img.shields.io/badge/status-active-success)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
@@ -10,39 +10,33 @@ An automated phishing detection service that analyzes suspicious emails using Cl
 
 ---
 
-## Overview
+## What is g0t-phish?
 
-**g0t-phish** is a serverless email security agent built with:
-- **Claude AI** (Haiku 4.5) for intelligent phishing detection
-- **Vercel** for serverless hosting
-- **Resend** for inbound/outbound email
-- **Upstash Redis** for rate limiting and deduplication
+g0t-phish is a serverless email security agent that uses Claude AI to detect phishing attempts. Simply forward any suspicious email to your g0t-phish address and receive a detailed security assessment instantly.
 
-Send any suspicious email to your configured agent address and receive a detailed security analysis within 2-3 seconds.
+**Key Benefits:**
+- ⚡ **2-3 second response time** - Instant analysis via webhooks
+- 🤖 **Claude AI powered** - Advanced pattern recognition
+- 💰 **$0.50-10/month** - Cost-effective serverless architecture
+- 🛡️ **Production-ready** - 5-layer loop prevention and rate limiting
+- 🚀 **Zero maintenance** - Fully serverless on Vercel
 
 ---
 
 ## Features
 
-### Core Capabilities
-- ✅ **Instant Analysis**: Webhook-based detection (no polling delays)
-- ✅ **AI-Powered**: Claude Haiku 4.5 identifies sophisticated phishing attempts
-- ✅ **Email Authentication**: Checks SPF, DKIM, DMARC
-- ✅ **Threat Detection**: Identifies spoofing, malicious links, social engineering, brand impersonation
-- ✅ **Beautiful Reports**: HTML-formatted analysis emails
+- **Email Authentication Verification** - Checks SPF, DKIM, DMARC status
+- **Sender Spoofing Detection** - Identifies forged sender addresses
+- **Malicious Link Analysis** - Scans URLs for threats
+- **Social Engineering Detection** - Recognizes urgency manipulation
+- **Brand Impersonation** - Detects fake emails mimicking companies
+- **Beautiful HTML Reports** - Color-coded verdicts with detailed evidence
 
-### Security Features
-- 🛡️ **5-Layer Email Loop Prevention**:
-  1. Self-reply detection (prevents agent replying to itself)
-  2. Rate limiting (10/hour per sender, 100/hour global)
-  3. Circuit breaker (emergency shutdown at 50 emails/10min)
-  4. Content deduplication (SHA-256 hashing)
-  5. Auto-submitted header detection
-
-### Performance
-- ⚡ **~2-3s** end-to-end latency (webhook → analysis → reply)
-- 📈 **Auto-scaling** via Vercel serverless
-- 💰 **~$2-10/month** for typical usage (1,000 emails/month)
+### Security & Abuse Prevention
+- **5-Layer Loop Prevention** - Self-reply, domain, header, Re: count checks
+- **Rate Limiting** - 10 emails/hour per sender, 100/hour global
+- **Circuit Breaker** - Emergency shutdown at 50 emails/10 minutes
+- **Content Deduplication** - SHA-256 hashing prevents duplicates
 
 ---
 
@@ -50,188 +44,145 @@ Send any suspicious email to your configured agent address and receive a detaile
 
 ### Prerequisites
 
-1. **Accounts** (all free tiers available):
-   - [Vercel](https://vercel.com/signup) - Hosting
-   - [Resend](https://resend.com/signup) - Email (100 emails/day free)
-   - [Anthropic](https://console.anthropic.com/signup) - Claude API
-   - [Upstash](https://upstash.com/signup) - Redis (10k requests/day free)
+Sign up for these free services:
+- [Vercel](https://vercel.com/signup) - Serverless hosting
+- [SendGrid](https://sendgrid.com/signup) - Inbound email receiving (unlimited free)
+- [Resend](https://resend.com/signup) - Outbound email sending (100 emails/day free)
+- [Anthropic](https://console.anthropic.com/signup) - Claude API
+- [Upstash](https://upstash.com/signup) - Redis (10K requests/day free)
 
-2. **Domain**: You'll need a domain or subdomain for email (e.g., `g0t-phish@yourdomain.com`)
+You'll also need a domain for your agent email address (e.g., `alert@inbound.yourdomain.com`).
 
 ### Installation
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone <your-repo-url>
 cd g0t-phish
 
 # Install dependencies
 npm install
 
-# Copy environment variables
+# Copy environment template
 cp .env.example .env.local
 
-# Edit .env.local with your API keys
-# - ANTHROPIC_API_KEY
-# - RESEND_API_KEY
-# - RESEND_AGENT_EMAIL
-# - UPSTASH_REDIS_REST_URL
-# - UPSTASH_REDIS_REST_TOKEN
+# Edit .env.local with your API keys:
+# - ANTHROPIC_API_KEY (from console.anthropic.com)
+# - RESEND_API_KEY (from resend.com/api-keys)
+# - RESEND_AGENT_EMAIL (your agent email address)
+# - UPSTASH_REDIS_REST_URL (from console.upstash.com)
+# - UPSTASH_REDIS_REST_TOKEN (from console.upstash.com)
 ```
 
-### Local Development
+### Deploy to Vercel
 
 ```bash
-# Run development server
-npm run dev
-
-# Test health endpoint
-curl http://localhost:3000/api/health
-
-# Test webhook (mock Resend payload)
-curl -X POST http://localhost:3000/api/inbound \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "email.received",
-    "created_at": "2025-10-23T12:00:00Z",
-    "data": {
-      "email_id": "test-123",
-      "from": "test@example.com",
-      "to": ["g0t-phish@yourdomain.com"],
-      "subject": "Test Email",
-      "text": "This is a test.",
-      "headers": {}
-    }
-  }'
-```
-
-### Deployment
-
-```bash
-# Deploy to Vercel
+# Install Vercel CLI
 npm install -g vercel
+
+# Login and deploy
 vercel login
 vercel --prod
 
-# Configure environment variables in Vercel dashboard
+# Add environment variables in Vercel dashboard
 # Settings → Environment Variables → Add all from .env.local
 ```
 
-### Configure Resend
+### Configure Email Services
 
-1. **Add domain to Resend**:
-   - Go to https://resend.com/domains
-   - Add your domain (e.g., `yourdomain.com`)
+#### SendGrid (Inbound - Receiving Emails)
 
-2. **Add DNS records** (provided by Resend):
+1. **Create SendGrid account** at [sendgrid.com](https://sendgrid.com/signup)
+2. **Authenticate domain** - Add DNS records for SPF, DKIM
+3. **Configure MX records** for your subdomain:
    ```
-   MX    @    feedback-smtp.us-east-1.amazonses.com    10
-   TXT   @    v=spf1 include:amazonses.com ~all
-   TXT   resend._domainkey    [DKIM key from Resend]
+   Type: MX
+   Host: inbound
+   Priority: 10
+   Value: mx.sendgrid.net
    ```
+4. **Setup Inbound Parse Webhook**:
+   - Domain: `yourdomain.com`
+   - Subdomain: `inbound` (creates `alert@inbound.yourdomain.com`)
+   - Webhook URL: `https://your-project.vercel.app/api/inbound`
+   - Enable spam check ✅
 
-3. **Configure inbound route**:
-   - Go to https://resend.com/inbound
-   - Match: `g0t-phish@yourdomain.com`
-   - Forward to: `https://your-project.vercel.app/api/inbound`
+**See [SENDGRID_SETUP.md](./SENDGRID_SETUP.md) for detailed configuration guide.**
 
-4. **Test**: Send email to `g0t-phish@yourdomain.com` and wait for analysis!
+#### Resend (Outbound - Sending Reports)
 
----
+1. **Add your domain** at [resend.com/domains](https://resend.com/domains)
+2. **Add DNS records** for sending authentication (SPF, DKIM)
+3. **No inbound configuration needed** - SendGrid handles receiving
 
-## Architecture
-
-```
-User sends email → Resend receives → Webhook to Vercel →
-Email loop checks → Rate limiting → Claude AI analysis →
-HTML report generation → Send reply via Resend → User receives analysis
-```
-
-### Email Loop Prevention (5 Layers)
-
-1. **Self-Reply Detection**: Checks if sender === agent address
-2. **Rate Limiting**: 10/hour per sender, 100/hour global (Upstash Redis)
-3. **Circuit Breaker**: Emergency shutdown at 50 emails/10min
-4. **Deduplication**: SHA-256 content hashing (1-hour TTL)
-5. **Header Detection**: Checks `Auto-Submitted`, `X-Auto-Response-Suppress`
-
-### Technology Stack
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Framework** | Next.js 14 (App Router) | Serverless API routes |
-| **Hosting** | Vercel | Serverless functions |
-| **Email** | Resend | Inbound webhooks + outbound API |
-| **AI** | Claude Haiku 4.5 | Phishing detection |
-| **Rate Limiting** | Upstash Redis | Abuse prevention |
-| **Language** | TypeScript | Type safety |
-| **Validation** | Zod | Runtime type checking |
+**Test**: Send an email to `alert@inbound.yourdomain.com`!
 
 ---
 
 ## Usage
 
-### Send Email for Analysis
+### Analyze a Suspicious Email
 
 Forward any suspicious email to your configured agent address:
 
 ```
-To: g0t-phish@yourdomain.com
-Subject: [Fwd: Suspicious email]
-Body: [Paste suspicious email content]
+To: alert@inbound.yourdomain.com
+Subject: Can you check this suspicious email?
 ```
 
-### Analysis Report
+### Receive Analysis Report
 
-Within 2-3 seconds, you'll receive an HTML email with:
+Within 2-3 seconds, you'll receive an HTML email containing:
 
-- **Verdict**: Safe / Suspicious / Phishing
-- **Confidence**: 0-100%
-- **Threats**: Detailed list with severity and evidence
-- **Authentication**: SPF, DKIM, DMARC status
-- **Summary**: Human-readable assessment
+- **Verdict**: Safe ✅ / Suspicious ⚠️ / Phishing 🚨
+- **Confidence Score**: 0-100% confidence level
+- **Threat Details**: Specific findings with severity and evidence
+- **Authentication Status**: SPF, DKIM, DMARC results
+- **AI Summary**: Human-readable explanation
 
-Example verdicts:
-- **Safe**: ✅ No threats detected, authentication passes
-- **Suspicious**: ⚠️ Some red flags, proceed with caution
-- **Phishing**: 🚨 Clear malicious intent, do not engage
+---
+
+## Example Analysis
+
+**Input:** Email claiming urgent account verification from "PayPal"
+
+**Output Report:**
+```
+🚨 PHISHING DETECTED - Confidence: 87%
+
+Threats Identified:
+• [CRITICAL] Sender spoofing: Email claims PayPal but from @paypa1.net
+• [HIGH] Malicious link: URL redirects to credential harvesting site
+• [MEDIUM] Urgency manipulation: "Verify within 24 hours or account suspended"
+
+Authentication:
+• SPF: FAIL ❌
+• DKIM: NONE ❌
+• DMARC: FAIL ❌
+
+Summary: This email is a phishing attempt impersonating PayPal. The sender
+domain is fake, authentication checks fail, and the link leads to a
+credential harvesting page. Do not click any links or provide information.
+```
+
+---
+
+## Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - AI agent instructions (for Claude Code)
+- **[SPEC.md](./SPEC.md)** - Complete technical specifications
+- **[THREAT_INTEL_ROADMAP.md](./THREAT_INTEL_ROADMAP.md)** - Future v2.0 plans
 
 ---
 
 ## Development
 
-### Project Structure
-
-```
-g0t-phish/
-├── app/
-│   ├── api/
-│   │   ├── inbound/route.ts       # Main webhook endpoint
-│   │   └── health/route.ts        # Health check
-│   ├── layout.tsx                 # Root layout
-│   └── page.tsx                   # Landing page
-├── lib/
-│   ├── claude-analyzer.ts         # Claude AI integration
-│   ├── email-loop-prevention.ts   # Loop detection
-│   ├── rate-limiter.ts            # Rate limiting + deduplication
-│   ├── resend-sender.ts           # Email sending
-│   └── html-generator.ts          # Report generation
-├── types/
-│   └── email.ts                   # TypeScript interfaces
-├── utils/
-│   └── logger.ts                  # Logging utility
-└── tests/
-    └── email-loop.test.ts         # Unit tests
-```
-
-### Testing
-
 ```bash
-# Run all tests
-npm test
+# Start development server
+npm run dev
 
-# Run in watch mode
-npm run test:watch
+# Run tests
+npm test
 
 # Type checking
 npm run type-check
@@ -240,125 +191,90 @@ npm run type-check
 npm run lint
 ```
 
-### Key Configuration
-
-**Vercel Timeout** (`app/api/inbound/route.ts`):
-```typescript
-export const config = {
-  maxDuration: 10, // 10 seconds (Hobby tier)
-};
-```
-
-**Rate Limits** (`lib/rate-limiter.ts`):
-```typescript
-const RATE_LIMITS = {
-  perSender: { limit: 10, windowMs: 60 * 60 * 1000 },  // 10/hour
-  global: { limit: 100, windowMs: 60 * 60 * 1000 },     // 100/hour
-  circuitBreaker: { limit: 50, windowMs: 10 * 60 * 1000 }, // 50/10min
-};
-```
+See **[SPEC.md](./SPEC.md)** for detailed development guide, API specs, and troubleshooting.
 
 ---
 
-## Cost Analysis
+## Cost Estimate
 
-### Free Tier (100-300 emails/month)
+### Typical Usage (1,000 emails/month)
 - **Vercel**: $0 (Hobby tier)
-- **Resend**: $0 (100 emails/day free)
-- **Anthropic**: ~$0.50 (Claude API)
-- **Upstash**: $0 (10k requests/day free)
+- **Resend**: $0 (within 100/day limit)
+- **Claude API**: ~$0.50
+- **Upstash Redis**: $0 (within free tier)
 - **Total**: **~$0.50/month**
 
-### Paid Tier (1,000-5,000 emails/month)
-- **Vercel**: $0-20 (Hobby or Pro)
-- **Resend**: $10 (50k emails/month)
-- **Anthropic**: ~$5 (Claude API)
-- **Upstash**: $0 (still within free tier)
-- **Total**: **~$15-35/month**
-
-Compare to Azure solution: **~$35/month** (fixed cost regardless of volume)
+All services have free tiers that cover typical usage. See [SPEC.md](./SPEC.md) for detailed cost breakdown.
 
 ---
 
 ## Troubleshooting
 
-### Webhook not receiving emails
-- Verify MX records: `dig MX yourdomain.com`
-- Check Resend domain verified (green checkmark)
+**Not receiving analysis emails?**
+- Check Resend domain verification (green checkmark)
+- Verify inbound route points to correct Vercel URL
 - Test webhook manually in Resend dashboard
 
-### Claude analysis failing
-- Verify `ANTHROPIC_API_KEY` in Vercel env vars
-- Check API credits at https://console.anthropic.com/
+**Claude analysis failing?**
+- Verify `ANTHROPIC_API_KEY` in Vercel environment variables
+- Check API credits at console.anthropic.com
 - Review Vercel function logs for errors
 
-### Email loop detected incorrectly
-- Verify `RESEND_AGENT_EMAIL` matches sending address
-- Check headers for auto-submitted flags
-- Review detection logic in `lib/email-loop-prevention.ts`
-
----
-
-## Documentation
-
-- **Architecture**: See inline comments in code
-- **API Reference**: Check `app/api/inbound/route.ts` for webhook spec
-- **Email Loop Prevention**: See `lib/email-loop-prevention.ts`
-- **Rate Limiting**: See `lib/rate-limiter.ts`
+**More issues?** See full troubleshooting guide in [SPEC.md](./SPEC.md#troubleshooting)
 
 ---
 
 ## Contributing
 
-This project is designed for educational purposes (class assignment). Feel free to:
-- Report bugs via issues
-- Suggest improvements
-- Fork and customize for your needs
+Contributions welcome! This project is designed for educational purposes.
+
+**How to contribute:**
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## Security Considerations
+## Security
 
-### Production Checklist
-- [ ] Rotate API keys every 90 days
-- [ ] Enable 2FA on all accounts (Vercel, Resend, Anthropic, Upstash)
-- [ ] Monitor rate limiting logs for abuse
-- [ ] Review Vercel function logs weekly
-- [ ] Set up billing alerts on all services
-- [ ] Test email loop prevention regularly
+If you discover a security vulnerability, please email security@yourdomain.com instead of using the issue tracker.
 
-### Best Practices
-- Never commit `.env.local` or API keys
-- Use Vercel environment variables for secrets
-- Review Claude analysis prompts for data leakage
-- Monitor Resend bounce rates
-- Keep dependencies updated
+**Production Security Checklist:**
+- Rotate API keys every 90 days
+- Enable 2FA on all service accounts
+- Monitor rate limiting logs for abuse patterns
+- Review function logs weekly
+- Set up billing alerts
+
+See [SPEC.md](./SPEC.md#security-implementation) for complete security details.
 
 ---
 
 ## License
 
-MIT License - See LICENSE file for details
-
----
-
-## Acknowledgments
-
-- **Anthropic** - Claude AI
-- **Vercel** - Serverless hosting
-- **Resend** - Email infrastructure
-- **Upstash** - Redis for rate limiting
+MIT License - See [LICENSE](./LICENSE) file for details.
 
 ---
 
 ## Support
 
-For questions or issues:
-1. Check the troubleshooting section above
-2. Review Vercel function logs
-3. Check Resend webhook logs
-4. Open an issue in the repository
+- **Documentation**: [SPEC.md](./SPEC.md)
+- **Issues**: [GitHub Issues](../../issues)
+- **Discussions**: [GitHub Discussions](../../discussions)
 
 ---
 
-**Built with ❤️ using Next.js, Claude AI, and modern serverless technologies**
+## Acknowledgments
+
+Built with:
+- [Claude AI](https://anthropic.com) by Anthropic
+- [Vercel](https://vercel.com) for serverless hosting
+- [Resend](https://resend.com) for email infrastructure
+- [Upstash](https://upstash.com) for serverless Redis
+- [Next.js](https://nextjs.org) framework
+
+---
+
+**Built with ❤️ for safer email communications**

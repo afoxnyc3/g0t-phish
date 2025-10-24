@@ -28,7 +28,7 @@ try {
 // Rate limit configuration
 const RATE_LIMITS = {
   perSender: {
-    limit: 10, // Max emails per sender per hour
+    limit: 100, // Max emails per sender per hour (temporarily increased for testing)
     windowMs: 60 * 60 * 1000, // 1 hour
   },
   global: {

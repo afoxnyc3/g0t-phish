@@ -11,10 +11,10 @@ const anthropic = new Anthropic({
 });
 
 // Maximum tool calls to prevent timeout (10s Vercel limit)
-const MAX_TOOL_CALLS = 3; // Reduced from 5 to prevent timeout
-const MAX_TOOL_LOOP_TIME_MS = 5000; // Reduced from 7000 - Reserve 3-4s for final Claude response
-const MAX_ANALYSIS_TIME_MS = 8000; // Reduced from 9000 - Overall budget (leave 2s for processing)
-const MIN_FALLBACK_TIME_MS = 2500; // Reduced from 3000 - Minimum time needed for fallback analysis
+const MAX_TOOL_CALLS = 5; // Allow more tool calls
+const MAX_TOOL_LOOP_TIME_MS = 50000; // 50s - essentially no internal limit, let Vercel timeout be the limit
+const MAX_ANALYSIS_TIME_MS = 60000; // 60s - essentially no internal limit
+const MIN_FALLBACK_TIME_MS = 2500; // Minimum time needed for fallback analysis
 
 /**
  * System prompt for agentic analysis with tool use (v1.1)
@@ -178,20 +178,15 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
           break;
         }
 
-        // Call Claude with tool definitions (with 7s timeout per call)
-        const response = await Promise.race([
-          anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 512, // Reduced from 1024 for faster response
-            temperature: 0,
-            system: SYSTEM_PROMPT,
-            tools: TOOLS,
-            messages,
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Claude API timeout')), 7000)
-          ),
-        ]) as Anthropic.Messages.Message;
+        // Call Claude with tool definitions (no artificial timeout - let Vercel timeout be the limit)
+        const response = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2048, // Increased back to 2048 for complete responses
+          temperature: 0,
+          system: SYSTEM_PROMPT,
+          tools: TOOLS,
+          messages,
+        });
 
       // Check stop reason
       if (response.stop_reason === 'end_turn' || response.stop_reason === 'max_tokens') {

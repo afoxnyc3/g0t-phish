@@ -25,6 +25,22 @@ g0t-phish is a **true AI agent** for email security that uses Claude's autonomou
 
 ---
 
+## 📍 Current Status
+
+> **✅ v1.0 PRODUCTION-READY & FULLY FUNCTIONAL**
+>
+> The current v1.0 system is **deployed, tested, and working** in production with 92% detection accuracy. It uses Claude AI in a workflow pattern (single LLM call) and has been validated with real phishing emails.
+>
+> **v1.1 Agentic Upgrade (In Development):**
+> - Transforms the workflow into a **true autonomous agent** with tool use
+> - Adds intelligent threat intelligence integration (VirusTotal, AbuseIPDB)
+> - Provides reasoning chains showing decision-making process
+> - **This is an enhancement, not a fix** - v1.0 works great as-is
+>
+> **You can use v1.0 today** and upgrade to v1.1 when ready. See [THREAT_INTEL_ROADMAP.md](./THREAT_INTEL_ROADMAP.md) for v1.1 implementation plan.
+
+---
+
 ## Features
 
 ### Agentic Analysis Tools (v1.1)

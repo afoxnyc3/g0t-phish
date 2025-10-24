@@ -10,7 +10,9 @@ const anthropic = new Anthropic({
 
 // Maximum tool calls to prevent timeout (10s Vercel limit)
 const MAX_TOOL_CALLS = 5;
-const MAX_ANALYSIS_TIME_MS = 9000; // Leave 1s buffer for response
+const MAX_TOOL_LOOP_TIME_MS = 7000; // Reserve 2-3s for final Claude response
+const MAX_ANALYSIS_TIME_MS = 9000; // Overall budget (leave 1s for processing)
+const MIN_FALLBACK_TIME_MS = 3000; // Minimum time needed for fallback analysis
 
 /**
  * System prompt for agentic analysis with tool use (v1.1)
@@ -134,11 +136,13 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
 
     // Tool execution loop
     while (iterationCount < MAX_TOOL_CALLS) {
-      // Check if we're approaching timeout
-      if (Date.now() - startTime > MAX_ANALYSIS_TIME_MS) {
+      // Check if we're approaching timeout (reserve time for final Claude response)
+      const elapsed = Date.now() - startTime;
+      if (elapsed > MAX_TOOL_LOOP_TIME_MS) {
         logger.warn('Approaching timeout, ending tool loop early', {
           iterations: iterationCount,
-          elapsed: Date.now() - startTime,
+          elapsed,
+          budget: MAX_TOOL_LOOP_TIME_MS,
         });
         break;
       }
@@ -274,23 +278,52 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
       break;
     }
 
-    // If we exit loop without returning, Claude may be stuck in tool loop
-    // Fall back to parsing the last response
-    logger.warn('Exited tool loop without final response, falling back', {
+    // If we exit loop without returning, return conservative analysis
+    // (likely timeout or max iterations reached)
+    logger.warn('Exited tool loop without final response, returning conservative analysis', {
       iterations: iterationCount,
+      toolCalls: toolCalls.length,
+      elapsed: Date.now() - startTime,
     });
 
-    // Fallback: use simple analyzer
-    return fallbackToSimpleAnalysis(email, startTime);
+    return buildConservativeAnalysis(email, toolCalls, {
+      model: 'claude-haiku-4-5-20251001',
+      totalLatency: Date.now() - startTime,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolExecutionTime: totalToolTime,
+    });
 
   } catch (error) {
-    logger.error('Agentic analysis failed, falling back to simple analysis', {
+    const elapsed = Date.now() - startTime;
+
+    logger.error('Agentic analysis failed', {
       from: email.from,
       error: error instanceof Error ? error.message : 'Unknown error',
       toolCalls: toolCalls.length,
+      elapsed,
     });
 
-    // Graceful degradation: fall back to simple Claude analysis
+    // Check if we have enough time for fallback (needs 3s minimum for Claude API call)
+    if (elapsed + MIN_FALLBACK_TIME_MS > MAX_ANALYSIS_TIME_MS) {
+      // Not enough time for fallback, return conservative analysis
+      logger.warn('Insufficient time for fallback, returning conservative analysis', {
+        elapsed,
+        remaining: MAX_ANALYSIS_TIME_MS - elapsed,
+        required: MIN_FALLBACK_TIME_MS,
+      });
+
+      return buildConservativeAnalysis(email, toolCalls, {
+        model: 'claude-haiku-4-5-20251001',
+        totalLatency: elapsed,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolExecutionTime: totalToolTime,
+      });
+    }
+
+    // Enough time remaining, use fallback to v1.0 simple analysis
+    logger.info('Sufficient time remaining, using fallback simple analysis');
     return fallbackToSimpleAnalysis(email, startTime);
   }
 }
@@ -375,6 +408,57 @@ function parseFinalResponse(
 
   return {
     ...parsed,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    metadata: {
+      model: metadata.model,
+      latency: metadata.totalLatency,
+      inputTokens: metadata.inputTokens,
+      outputTokens: metadata.outputTokens,
+      toolExecutionTime: metadata.toolExecutionTime,
+    },
+  };
+}
+
+/**
+ * Build conservative analysis when Claude doesn't return final verdict
+ * (e.g., timeout, loop exit, unexpected stop reason)
+ *
+ * Returns "suspicious" verdict with low confidence to signal incomplete analysis.
+ * This is safer than returning "safe" when we couldn't complete the analysis.
+ */
+function buildConservativeAnalysis(
+  email: EmailInput,
+  toolCalls: ToolCall[],
+  metadata: {
+    model: string;
+    totalLatency: number;
+    inputTokens: number;
+    outputTokens: number;
+    toolExecutionTime: number;
+  }
+): EmailAnalysis {
+  logger.info('Building conservative analysis due to incomplete agent flow', {
+    from: email.from,
+    toolCalls: toolCalls.length,
+    elapsed: metadata.totalLatency,
+  });
+
+  return {
+    verdict: 'suspicious',
+    confidence: 50, // Low confidence due to incomplete analysis
+    threats: [],
+    authentication: {
+      spf: 'none',
+      dkim: 'none',
+      dmarc: 'none',
+    },
+    summary: 'Analysis incomplete due to timeout. Email flagged as suspicious for manual review. Please verify sender authenticity and avoid clicking links until you can confirm this email is legitimate.',
+    reasoning: [
+      'Analysis started but did not complete within time limit',
+      `Executed ${toolCalls.length} tool${toolCalls.length === 1 ? '' : 's'} before timeout`,
+      'Returning conservative "suspicious" verdict for safety',
+      'Recommend manual review of this email',
+    ],
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     metadata: {
       model: metadata.model,

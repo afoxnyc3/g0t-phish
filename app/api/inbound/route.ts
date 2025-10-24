@@ -7,6 +7,9 @@ import { checkRateLimit, checkDeduplication } from '@/lib/rate-limiter';
 import { sendAnalysisEmail } from '@/lib/resend-sender';
 import { logger } from '@/utils/logger';
 
+// Route segment config for Vercel Pro tier (60s timeout)
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

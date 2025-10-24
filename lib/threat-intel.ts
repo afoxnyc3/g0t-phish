@@ -273,8 +273,13 @@ export class ThreatIntelService {
     // Check cache first
     if (this.redis) {
       try {
-        const cached = await this.redis.get<UrlReputationResult>(cacheKey);
-        if (cached) return cached;
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          // Parse if cached value is a string
+          return typeof cached === 'string'
+            ? (JSON.parse(cached) as UrlReputationResult)
+            : (cached as UrlReputationResult);
+        }
       } catch (error) {
         console.warn('[ThreatIntel] Redis cache read error:', error);
       }
@@ -335,8 +340,13 @@ export class ThreatIntelService {
     // Check cache
     if (this.redis) {
       try {
-        const cached = await this.redis.get<IpReputationResult>(cacheKey);
-        if (cached) return cached;
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          // Parse if cached value is a string
+          return typeof cached === 'string'
+            ? (JSON.parse(cached) as IpReputationResult)
+            : (cached as IpReputationResult);
+        }
       } catch (error) {
         console.warn('[ThreatIntel] Redis cache read error:', error);
       }
@@ -388,8 +398,13 @@ export class ThreatIntelService {
     // Check cache
     if (this.redis) {
       try {
-        const cached = await this.redis.get<DomainAgeResult>(cacheKey);
-        if (cached) return cached;
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          // Parse if cached value is a string
+          return typeof cached === 'string'
+            ? (JSON.parse(cached) as DomainAgeResult)
+            : (cached as DomainAgeResult);
+        }
       } catch (error) {
         console.warn('[ThreatIntel] Redis cache read error:', error);
       }

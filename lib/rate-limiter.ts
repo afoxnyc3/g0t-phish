@@ -3,10 +3,27 @@ import { Redis } from '@upstash/redis';
 import { RateLimitCheck } from '@/types/email';
 import { logger } from '@/utils/logger';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Initialize Redis with defensive error handling
+let redis: Redis;
+try {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+
+  if (!url || !token || !url.startsWith('https://')) {
+    throw new Error('Invalid Redis configuration');
+  }
+
+  redis = new Redis({ url, token });
+} catch (error) {
+  // Fallback Redis instance (operations will fail gracefully)
+  logger.warn('Failed to initialize Redis for rate limiting', {
+    error: error instanceof Error ? error.message : 'Unknown error',
+  });
+  redis = new Redis({
+    url: 'https://placeholder.upstash.io',
+    token: 'placeholder-token',
+  });
+}
 
 // Rate limit configuration
 const RATE_LIMITS = {

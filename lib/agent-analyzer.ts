@@ -4,6 +4,7 @@ import type { MessageParam, Tool, ToolUseBlock, TextBlock } from '@anthropic-ai/
 import { EmailInput, EmailAnalysis, ToolCall, ToolResult } from '@/types/email';
 import { logger } from '@/utils/logger';
 import { extractUrls, checkAuthentication, analyzeSender } from './tools/local-tools';
+import { checkUrlReputation, checkIpReputation } from './tools/threat-intel-tools';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -107,6 +108,34 @@ const TOOLS: Tool[] = [
         },
       },
       required: ['from'],
+    },
+  },
+  {
+    name: 'check_url_reputation',
+    description: 'Check URL reputation using VirusTotal API. Use this ONLY when you suspect a URL may be malicious (e.g., from suspicious domains, shortened links, or typosquatting). This tool makes an external API call and should be used sparingly.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'The URL to check (must be a valid http/https URL)',
+        },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'check_ip_reputation',
+    description: 'Check IP address reputation using AbuseIPDB. Use this ONLY when you suspect the sender IP may be from a known malicious source (e.g., failed authentication, suspicious sender patterns). This tool makes an external API call and should be used sparingly.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ip: {
+          type: 'string',
+          description: 'The IP address to check (IPv4 format)',
+        },
+      },
+      required: ['ip'],
     },
   },
 ];
@@ -330,8 +359,9 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
 }
 
 /**
- * Execute a tool (local tools implemented in Issue #2)
- * Threat intel tools will come in Issue #3
+ * Execute a tool
+ * - Local tools (Issue #2): extract_urls, check_authentication, analyze_sender
+ * - Threat intel tools (Issue #3): check_url_reputation, check_ip_reputation
  */
 async function executeTool(
   name: string,
@@ -372,20 +402,20 @@ async function executeTool(
       };
     }
 
-    // Threat intel tools (Issue #3 - stubs for now)
-    case 'check_url_reputation':
-      return {
-        success: false,
-        error: 'Tool not yet implemented (Issue #3)',
-        source: 'virustotal',
-      };
+    // Threat intel tools (Issue #3)
+    case 'check_url_reputation': {
+      const result = await checkUrlReputation({
+        url: input.url,
+      });
+      return result;
+    }
 
-    case 'check_ip_reputation':
-      return {
-        success: false,
-        error: 'Tool not yet implemented (Issue #3)',
-        source: 'abuseipdb',
-      };
+    case 'check_ip_reputation': {
+      const result = await checkIpReputation({
+        ip: input.ip,
+      });
+      return result;
+    }
 
     default:
       throw new Error(`Unknown tool: ${name}`);

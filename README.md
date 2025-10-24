@@ -113,7 +113,7 @@ graph TB
 > - ✅ 60% API cost savings through smart tool selection
 > - ✅ 2-4 second end-to-end response time
 >
-> See [THREAT_INTEL_ROADMAP.md](./THREAT_INTEL_ROADMAP.md) for implementation details.
+> See [THREAT_INTEL_ROADMAP.md](./docs/development/THREAT_INTEL_ROADMAP.md) for implementation details.
 
 ---
 
@@ -226,7 +226,7 @@ vercel --prod
    - Webhook URL: `https://your-project.vercel.app/api/inbound`
    - Enable spam check ✅
 
-**See [SENDGRID_SETUP.md](./SENDGRID_SETUP.md) for detailed configuration guide.**
+**See [SENDGRID_SETUP.md](./docs/setup/SENDGRID_SETUP.md) for detailed configuration guide.**
 
 #### Resend (Outbound - Sending Reports)
 
@@ -304,8 +304,8 @@ information.
 ## Documentation
 
 - **[CLAUDE.md](./CLAUDE.md)** - AI agent instructions (for Claude Code)
-- **[SPEC.md](./SPEC.md)** - Complete technical specifications
-- **[THREAT_INTEL_ROADMAP.md](./THREAT_INTEL_ROADMAP.md)** - v1.1 implementation roadmap (6 phases)
+- **[SPEC.md](./docs/development/SPEC.md)** - Complete technical specifications
+- **[THREAT_INTEL_ROADMAP.md](./docs/development/THREAT_INTEL_ROADMAP.md)** - v1.1 implementation roadmap (6 phases)
 
 ---
 
@@ -325,7 +325,7 @@ npm run type-check
 npm run lint
 ```
 
-See **[SPEC.md](./SPEC.md)** for detailed development guide, API specs, and troubleshooting.
+See **[SPEC.md](./docs/development/SPEC.md)** for detailed development guide, API specs, and troubleshooting.
 
 ---
 
@@ -344,7 +344,7 @@ See **[SPEC.md](./SPEC.md)** for detailed development guide, API specs, and trou
 - 60% fewer API calls (intelligent tool use vs. always-on)
 - 80% cache hit rate after 24 hours (common phishing URLs/IPs)
 
-All services have free tiers that cover typical usage. See [SPEC.md](./SPEC.md#cost-analysis-v11-with-intelligent-threat-intel) for detailed cost breakdown.
+All services have free tiers that cover typical usage. See [SPEC.md](./docs/development/SPEC.md#cost-analysis-v11-with-intelligent-threat-intel) for detailed cost breakdown.
 
 ---
 
@@ -360,7 +360,7 @@ All services have free tiers that cover typical usage. See [SPEC.md](./SPEC.md#c
 - Check API credits at console.anthropic.com
 - Review Vercel function logs for errors
 
-**More issues?** See full troubleshooting guide in [SPEC.md](./SPEC.md#troubleshooting)
+**More issues?** See full troubleshooting guide in [SPEC.md](./docs/development/SPEC.md#troubleshooting)
 
 ---
 
@@ -388,7 +388,7 @@ If you discover a security vulnerability, please email security@yourdomain.com i
 - Review function logs weekly
 - Set up billing alerts
 
-See [SPEC.md](./SPEC.md#security-implementation) for complete security details.
+See [SPEC.md](./docs/development/SPEC.md#security-implementation) for complete security details.
 
 ---
 
@@ -400,7 +400,7 @@ MIT License - See [LICENSE](./LICENSE) file for details.
 
 ## Support
 
-- **Documentation**: [SPEC.md](./SPEC.md)
+- **Documentation**: [SPEC.md](./docs/development/SPEC.md)
 - **Issues**: [GitHub Issues](../../issues)
 - **Discussions**: [GitHub Discussions](../../discussions)
 

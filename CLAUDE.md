@@ -425,7 +425,7 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 - URL/IP extraction and reputation checking
 - Cross-validation between AI and threat databases
 
-**See:** `THREAT_INTEL_ROADMAP.md` for full v2.0 plan
+**See:** `docs/development/THREAT_INTEL_ROADMAP.md` for full v2.0 plan
 
 **Important:** Do NOT implement v2.0 features until v1.0 is stable and validated.
 
@@ -441,7 +441,7 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 | Loop detected | Loop check logs | Verify agent email config |
 | Build fails | TypeScript errors | Run `npm run type-check` |
 
-**Full troubleshooting:** See `SPEC.md` Section 18
+**Full troubleshooting:** See `docs/development/SPEC.md` Section 18
 
 ---
 
@@ -451,8 +451,8 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 |----------|---------|-------------|
 | **CLAUDE.md** (this file) | AI agent instructions | Always read first |
 | **README.md** | User-facing guide | For setup and usage |
-| **SPEC.md** | Technical reference | For architecture and APIs |
-| **THREAT_INTEL_ROADMAP.md** | v1.1 agentic plan | For implementation roadmap |
+| **docs/development/SPEC.md** | Technical reference | For architecture and APIs |
+| **docs/development/THREAT_INTEL_ROADMAP.md** | v1.1 agentic plan | For implementation roadmap |
 | **types/email.ts** | Data model definitions | For TypeScript interfaces |
 
 ---

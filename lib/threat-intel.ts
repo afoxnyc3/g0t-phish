@@ -105,17 +105,25 @@ export class ThreatIntelService {
    * Initialize Redis cache for threat intel results
    */
   private initializeRedisCache(): void {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+    try {
+      const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
+      const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
 
-    if (redisUrl && redisToken) {
+      if (!redisUrl || !redisToken || !redisUrl.startsWith('https://')) {
+        this.redis = null;
+        console.warn('[ThreatIntel] Redis not configured - caching disabled');
+        return;
+      }
+
       this.redis = new Redis({
         url: redisUrl,
         token: redisToken,
       });
-    } else {
+    } catch (error) {
       this.redis = null;
-      console.warn('[ThreatIntel] Redis not configured - caching disabled');
+      console.warn('[ThreatIntel] Failed to initialize Redis', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 

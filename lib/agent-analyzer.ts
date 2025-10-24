@@ -164,28 +164,34 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
 
     let iterationCount = 0;
 
-    // Tool execution loop
-    while (iterationCount < MAX_TOOL_CALLS) {
-      // Check if we're approaching timeout (reserve time for final Claude response)
-      const elapsed = Date.now() - startTime;
-      if (elapsed > MAX_TOOL_LOOP_TIME_MS) {
-        logger.warn('Approaching timeout, ending tool loop early', {
-          iterations: iterationCount,
-          elapsed,
-          budget: MAX_TOOL_LOOP_TIME_MS,
-        });
-        break;
-      }
+    // Tool execution loop with timeout handling
+    try {
+      while (iterationCount < MAX_TOOL_CALLS) {
+        // Check if we're approaching timeout (reserve time for final Claude response)
+        const elapsed = Date.now() - startTime;
+        if (elapsed > MAX_TOOL_LOOP_TIME_MS) {
+          logger.warn('Approaching timeout, ending tool loop early', {
+            iterations: iterationCount,
+            elapsed,
+            budget: MAX_TOOL_LOOP_TIME_MS,
+          });
+          break;
+        }
 
-      // Call Claude with tool definitions
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        temperature: 0,
-        system: SYSTEM_PROMPT,
-        tools: TOOLS,
-        messages,
-      });
+        // Call Claude with tool definitions (with 4s timeout per call)
+        const response = await Promise.race([
+          anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 1024, // Reduced from 2048 for faster response
+            temperature: 0,
+            system: SYSTEM_PROMPT,
+            tools: TOOLS,
+            messages,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Claude API timeout')), 4000)
+          ),
+        ]) as Anthropic.Messages.Message;
 
       // Check stop reason
       if (response.stop_reason === 'end_turn' || response.stop_reason === 'max_tokens') {
@@ -301,28 +307,45 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
         continue; // Continue the loop for Claude to process tool results
       }
 
-      // Unexpected stop reason
-      logger.warn('Unexpected stop reason from Claude', {
-        stop_reason: response.stop_reason,
+        // Unexpected stop reason
+        logger.warn('Unexpected stop reason from Claude', {
+          stop_reason: response.stop_reason,
+        });
+        break;
+      }
+
+      // If we exit loop without returning, return conservative analysis
+      // (likely timeout or max iterations reached)
+      logger.warn('Exited tool loop without final response, returning conservative analysis', {
+        iterations: iterationCount,
+        toolCalls: toolCalls.length,
+        elapsed: Date.now() - startTime,
       });
-      break;
+
+      return buildConservativeAnalysis(email, toolCalls, {
+        model: 'claude-haiku-4-5-20251001',
+        totalLatency: Date.now() - startTime,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolExecutionTime: totalToolTime,
+      });
+
+    } catch (toolLoopError) {
+      // Claude API timeout during tool loop - return conservative analysis immediately
+      logger.error('Claude API timeout in tool loop, returning conservative analysis', {
+        error: toolLoopError instanceof Error ? toolLoopError.message : 'Unknown error',
+        toolCalls: toolCalls.length,
+        elapsed: Date.now() - startTime,
+      });
+
+      return buildConservativeAnalysis(email, toolCalls, {
+        model: 'claude-haiku-4-5-20251001',
+        totalLatency: Date.now() - startTime,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolExecutionTime: totalToolTime,
+      });
     }
-
-    // If we exit loop without returning, return conservative analysis
-    // (likely timeout or max iterations reached)
-    logger.warn('Exited tool loop without final response, returning conservative analysis', {
-      iterations: iterationCount,
-      toolCalls: toolCalls.length,
-      elapsed: Date.now() - startTime,
-    });
-
-    return buildConservativeAnalysis(email, toolCalls, {
-      model: 'claude-haiku-4-5-20251001',
-      totalLatency: Date.now() - startTime,
-      inputTokens: 0,
-      outputTokens: 0,
-      toolExecutionTime: totalToolTime,
-    });
 
   } catch (error) {
     const elapsed = Date.now() - startTime;

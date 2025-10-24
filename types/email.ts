@@ -60,7 +60,31 @@ export interface EmailInput {
 }
 
 /**
- * Claude analysis result
+ * Tool call made by Claude during analysis (v1.1)
+ */
+export interface ToolCall {
+  id: string; // Unique identifier from Claude API
+  name: 'extract_urls' | 'check_authentication' | 'analyze_sender' | 'check_url_reputation' | 'check_ip_reputation';
+  input: Record<string, any>; // Tool-specific parameters
+  result?: ToolResult; // Execution result (populated after tool runs)
+  startTime: number; // Timestamp when tool was called
+  endTime?: number; // Timestamp when tool completed
+  duration?: number; // Execution duration in milliseconds
+}
+
+/**
+ * Result from tool execution (v1.1)
+ */
+export interface ToolResult {
+  success: boolean;
+  data?: any; // Tool-specific result data
+  error?: string; // Error message if tool failed
+  cached?: boolean; // True if result came from Redis cache
+  source?: 'local' | 'virustotal' | 'abuseipdb'; // Where the data came from
+}
+
+/**
+ * Claude analysis result (v1.1 enhanced with tool use)
  */
 export interface EmailAnalysis {
   verdict: 'safe' | 'suspicious' | 'phishing';
@@ -71,6 +95,7 @@ export interface EmailAnalysis {
     description: string;
     evidence: string;
     confidence?: number; // Added for threat intel indicators
+    source?: 'claude' | 'virustotal' | 'abuseipdb'; // v1.1: Evidence source
   }>;
   authentication: {
     spf: 'pass' | 'fail' | 'neutral' | 'none';
@@ -78,13 +103,16 @@ export interface EmailAnalysis {
     dmarc: 'pass' | 'fail' | 'neutral' | 'none';
   };
   summary: string;
+  reasoning?: string[]; // v1.1: Step-by-step reasoning chain
+  toolCalls?: ToolCall[]; // v1.1: Tools used during analysis
   metadata: {
     model: string;
     latency: number;
     inputTokens: number;
     outputTokens: number;
+    toolExecutionTime?: number; // v1.1: Time spent in tool calls
   };
-  // Threat intelligence enrichment (optional)
+  // Threat intelligence enrichment (optional - legacy, may be removed)
   threatIntel?: {
     riskContribution: number;
     servicesUsed: string[];

@@ -1,43 +1,57 @@
-# Threat Intelligence Integration Roadmap
+# Agentic Architecture + Threat Intelligence Roadmap
 
-> **⚠️ STATUS: v2.0 FUTURE FEATURE - NOT IN CURRENT MVP**
+> **✅ STATUS: v1.1 IN ACTIVE DEVELOPMENT**
 >
-> **Current Version:** v1.0 (Claude AI-only analysis)
-> **Target Version:** v2.0 (Claude AI + Threat Intelligence)
-> **Status:** Scaffolding complete, integration pending
+> **Current Version:** v1.0 (Claude AI-only workflow)
+> **Target Version:** v1.1 (Agentic Architecture + Intelligent Threat Intel)
+> **Status:** Documentation phase, implementation starting
 >
-> This document describes **future enhancements**. The current production system (v1.0) uses only Claude AI for phishing detection. Do not implement these features until v1.0 is stable and validated in production.
+> This document outlines the v1.1 upgrade from a simple workflow to a **true agentic system** where Claude uses tools (including threat intelligence APIs) to make intelligent decisions.
 
 ---
 
 ## Overview
 
-This document outlines the phased integration of external threat intelligence services (VirusTotal, AbuseIPDB, URLScan.io) into g0t-phish to enhance phishing detection accuracy through objective, database-backed threat data.
+This document describes the v1.1 architectural upgrade that transforms g0t-phish from a simple LLM workflow into an **intelligent agent** that:
 
-**Goal:** Combine Claude AI's pattern recognition with concrete threat intelligence to achieve higher detection accuracy and confidence scores.
+1. **Uses Claude's tool use** to make autonomous decisions
+2. **Integrates threat intelligence** (VirusTotal, AbuseIPDB) as tools
+3. **Calls APIs intelligently** - only when Claude determines it's necessary
+4. **Provides reasoning chains** - shows decision-making process to users
+
+**Goal:** Create a true AI agent that combines autonomous reasoning with objective threat intelligence, only calling external APIs when contextually appropriate.
 
 ---
 
-## Current State (v1.0)
+## Previous State (v1.0 - Production)
 
-**Detection Method:** 100% Claude AI analysis
-- Authentication checks (SPF, DKIM, DMARC)
-- Sender spoofing detection
-- Social engineering patterns
-- Brand impersonation
+**Architecture:** Serverless workflow with single LLM call
+- Single API call to Claude for analysis
+- No tool use or autonomous decision-making
+- No external threat intelligence
+- Fixed prompt → response pattern
+
+**What worked:**
+- ✅ Fast (2-3s response time)
+- ✅ Simple and reliable
+- ✅ 92% accuracy on test cases
 
 **Limitations:**
-- No cross-validation with known threat databases
-- Cannot detect URLs/IPs already flagged by security community
-- Relies solely on AI pattern matching
+- ❌ Not a true "agent" - just prompt engineering
+- ❌ No tool use capabilities
+- ❌ No cross-validation with threat databases
+- ❌ Cannot make contextual decisions about when to call APIs
+- ❌ No reasoning chain visible to users
 
 ---
 
-## Target State (v2.0)
+## Target State (v1.1 - Agentic + Intelligent Threat Intel)
 
-**Hybrid Detection:** Claude AI + Threat Intelligence
-- Parallel execution of Claude + threat intel lookups (2-3s total latency)
-- Cross-validation between AI and objective data sources
+**Architecture:** Autonomous agent with tool use
+- Claude decides which tools to use and when
+- Multi-step reasoning with tool calls
+- Intelligent API usage (only when needed)
+- Reasoning chain recorded and displayed
 - Increased confidence scores when both systems agree
 - Concrete evidence ("Flagged by 23/89 VirusTotal vendors")
 
@@ -45,62 +59,83 @@ This document outlines the phased integration of external threat intelligence se
 
 ## Architecture Design
 
-### Parallel Execution Pattern
+### v1.1 Agentic Tool Use Pattern
 
 ```
 ┌─────────────────┐
 │  Email Received │
 └────────┬────────┘
          │
-    ┌────▼────┐
-    │  Split  │
-    └────┬────┘
+    ┌────▼────────────┐
+    │ Claude Agent    │
+    │ (Tool Use Loop) │
+    └────┬────────────┘
          │
-    ┌────┴─────────────────────┐
-    │                          │
-┌───▼──────────┐      ┌────────▼──────┐
-│ Claude AI    │      │ Threat Intel  │
-│ Analysis     │      │ Lookups       │
-│              │      │               │
-│ - Patterns   │      │ - VirusTotal  │
-│ - Spoofing   │      │ - AbuseIPDB   │
-│ - Social Eng │      │ - URLScan.io  │
-└───┬──────────┘      └────────┬──────┘
-    │                          │
-    └────┬─────────────────────┘
+         ├─────────────────────────────┐
+         │ Autonomous Decision Making  │
+         └─────────────────────────────┘
          │
     ┌────▼─────────┐
-    │ Merge Results│
+    │ Analyze Email│ ← Claude reads email
     └────┬─────────┘
          │
-    ┌────▼──────────┐
-    │ Generate HTML │
-    │ Report        │
-    └────┬──────────┘
+    ┌────▼──────────────────────────────┐
+    │ "I see suspicious URL, let me     │
+    │  verify with threat intelligence" │ ← Claude decides
+    └────┬──────────────────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Tool: check_url_     │
+    │ reputation(url)      │ ← Claude calls tool
+    └────┬─────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Execute VirusTotal   │
+    │ API call             │ ← System executes
+    └────┬─────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Return: "23/89       │
+    │ vendors flagged"     │ ← Result back to Claude
+    └────┬─────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Claude reasons:      │
+    │ "Confirmed phishing  │
+    │ with evidence"       │ ← Claude synthesizes
+    └────┬─────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Generate HTML with   │
+    │ Reasoning Chain      │
+    └────┬─────────────────┘
          │
     ┌────▼────────┐
-    │ Send Email  │
+    │ Send Report │
     └─────────────┘
 ```
 
-### Key Design Principles
+### Key Design Principles (v1.1)
 
-1. **Fail Gracefully** - If threat intel APIs are unavailable, fall back to Claude-only analysis
-2. **Aggressive Timeouts** - 3s per service to stay under 10s Vercel limit
-3. **Redis Caching** - 1-hour cache for API results to reduce costs and latency
-4. **Optional Services** - Each API key is optional; system adapts based on availability
-5. **Parallel Execution** - All lookups happen simultaneously to minimize latency
+1. **Autonomous Decision-Making** - Claude decides which tools to use and when
+2. **Intelligent API Usage** - Only call external APIs when Claude determines it's necessary (60% cost savings)
+3. **Tool-Based Architecture** - All capabilities exposed as tools Claude can call
+4. **Reasoning Chains** - Record and display Claude's decision-making process
+5. **Fail Gracefully** - If tools fail, Claude can still reason without them
+6. **Aggressive Timeouts** - 3s per tool to stay under 10s Vercel limit
+7. **Redis Caching** - 1-hour cache for API results to reduce costs
+8. **Explainable AI** - Users see WHY Claude made decisions
 
 ---
 
-## Implementation Phases
+## Implementation Phases (v1.1)
 
-### ✅ Phase 0: Scaffolding (COMPLETED)
+### ✅ Phase 0: Scaffolding (COMPLETED in v1.0)
 
 **Status:** DONE
 **Files Created:**
-- `lib/threat-intel.ts` - Service with VirusTotal, AbuseIPDB, URLScan clients
-- Updated `types/email.ts` - Added threat intel fields to EmailAnalysis
+- `lib/threat-intel.ts` - Service with VirusTotal, AbuseIPDB clients (450 lines)
+- Updated `types/email.ts` - Added threat intel fields
 - Updated `.env.example` - Added API key placeholders
 
 **Features:**
@@ -108,162 +143,197 @@ This document outlines the phased integration of external threat intelligence se
 - Zod validation schemas for API responses
 - Redis caching using Upstash
 - URL/IP extraction utilities
-- Health check endpoint
+- Ready to be wired as tools
 
 ---
 
-### 📋 Phase 1: Integration with Main Pipeline
+### 🔄 Phase 1: Tool Use Framework (Issue #1)
 
-**Goal:** Wire threat intel into the `/api/inbound` route
+**Goal:** Implement Claude's tool use capability
 
 **Tasks:**
-1. Import ThreatIntelService into `/app/api/inbound/route.ts`
-2. Initialize service (singleton pattern for warm starts)
-3. Add parallel execution with Claude analysis:
-   ```typescript
-   const [claudeResult, threatIntelResult] = await Promise.all([
-     analyzeEmail(emailInput),
-     threatIntelService.enrichEmail(email.from, senderIp, urls)
-   ]);
-   ```
-4. Merge threat intel indicators into `claudeResult.threats` array
-5. Calculate adjusted confidence score based on cross-validation
-6. Add threat intel metadata to response
+1. Create `lib/agent-analyzer.ts` (replaces simple claude-analyzer)
+2. Implement tool execution loop with message history
+3. Handle `tool_use` stop reason from Claude
+4. Define tool interface and execution router
+5. Add comprehensive error handling
+6. Update `types/email.ts` with tool metadata
 
 **Acceptance Criteria:**
-- Threat intel lookups execute in parallel with Claude
-- Total latency remains under 10 seconds
-- System works with 0, 1, 2, or 3 API keys configured
-- Logs show which services were used
+- Claude can call tools and receive results
+- Tool execution loop handles multiple tool calls
+- Message history maintained correctly
+- Errors handled gracefully (fallback to no tools)
+- Total latency under 10 seconds
 
-**Files to Modify:**
-- `app/api/inbound/route.ts` (main webhook handler)
+**Files to Create/Modify:**
+- `lib/agent-analyzer.ts` (NEW - main agent logic)
+- `types/email.ts` (add ToolCall, ToolResult types)
+
+**Branch:** `feature/1-tool-use-framework`
 
 ---
 
-### 📋 Phase 2: Enhanced HTML Reporting
+### 🔄 Phase 2: Local Analysis Tools (Issue #2)
 
-**Goal:** Display threat intelligence findings in email reports
+**Goal:** Implement local tools for email analysis
 
 **Tasks:**
-1. Update `lib/html-generator.ts` to render threat intel indicators
-2. Add badges for threat intel sources (VirusTotal, AbuseIPDB)
-3. Create separate section for "External Threat Intelligence"
-4. Show which services were consulted
-5. Display enrichment latency in performance metrics
+1. Implement `extract_urls` tool
+   - Regex-based URL extraction
+   - Deduplication and safe domain filtering
+2. Implement `check_authentication` tool
+   - Parse SPF/DKIM/DMARC headers
+   - Return structured authentication status
+3. Implement `analyze_sender` tool
+   - Extract sender domain
+   - Check for common spoofing patterns
+4. Add tool descriptions and JSON schemas
+5. Unit tests for each tool
+
+**Acceptance Criteria:**
+- All 3 local tools implemented and tested
+- Tools return structured JSON
+- Clear descriptions for Claude to understand when to use them
+- Tools execute in <100ms each
+
+**Files to Create/Modify:**
+- `lib/tools/local-tools.ts` (NEW)
+- `tests/local-tools.test.ts` (NEW)
+
+**Branch:** `feature/2-local-analysis-tools`
+
+---
+
+### 🔄 Phase 3: Threat Intelligence Tools (Issue #3)
+
+**Goal:** Wire threat intel APIs as Claude tools
+
+**Tasks:**
+1. Implement `check_url_reputation` tool
+   - Calls VirusTotal API via ThreatIntelService
+   - Returns malicious count, total scans, confidence
+2. Implement `check_ip_reputation` tool
+   - Calls AbuseIPDB API via ThreatIntelService
+   - Returns abuse score, report count
+3. Add tool descriptions optimized for Claude
+4. Wire tools to existing `ThreatIntelService`
+5. Add timeout handling (3s per API)
+6. Implement caching (Redis) for API results
+
+**Acceptance Criteria:**
+- Both threat intel tools implemented and tested
+- APIs called only when Claude requests them
+- Caching reduces duplicate API calls
+- Tools handle API failures gracefully
+- Clear descriptions explain when to use each tool
+
+**Files to Create/Modify:**
+- `lib/tools/threat-intel-tools.ts` (NEW)
+- `lib/threat-intel.ts` (minor updates for tool interface)
+
+**Branch:** `feature/3-threat-intel-tools`
+
+---
+
+### 🔄 Phase 4: Webhook Integration (Issue #4)
+
+**Goal:** Wire agentic analyzer into webhook handler
+
+**Tasks:**
+1. Update `app/api/inbound/route.ts`
+2. Replace `analyzeEmail()` with `analyzeWithTools()`
+3. Add tool execution routing logic
+4. Update error handling for tool failures
+5. Ensure 10s timeout compliance
+6. Add logging for tool calls
+
+**Acceptance Criteria:**
+- Webhook calls new agent analyzer
+- Tool execution integrated into request flow
+- Errors don't crash webhook (graceful degradation)
+- Total latency under 10 seconds
+- Logs show which tools were called
+
+**Files to Modify:**
+- `app/api/inbound/route.ts`
+- Update imports to use `agent-analyzer`
+
+**Branch:** `feature/4-webhook-integration`
+
+---
+
+### 🔄 Phase 5: Reasoning Chain Reports (Issue #5)
+
+**Goal:** Display agent reasoning in HTML reports
+
+**Tasks:**
+1. Update `lib/html-generator.ts`
+2. Add "Agent Reasoning" section
+3. Display tool call history (which tools, when, why)
+4. Show tool results with evidence
+5. Update styling for new sections
+6. Add performance metrics (tool execution time)
 
 **Design Mockup:**
 ```html
 ┌─────────────────────────────────────┐
 │ 🔴 PHISHING - Confidence: 95%       │
 ├─────────────────────────────────────┤
-│ Claude AI Analysis:                 │
-│ • Urgency manipulation detected     │
-│ • Suspicious sender domain          │
+│ Agent Reasoning:                    │
+│ 1. Analyzed email headers           │
+│ 2. Detected typosquatting domain    │
+│ 3. ✓ Called check_url_reputation    │
+│    → VirusTotal: 23/89 flagged      │
+│ 4. Verdict: PHISHING (high conf)    │
 │                                     │
-│ External Threat Intelligence:       │
+│ Detected Threats:                   │
 │ 🔴 Malicious URL (VirusTotal)       │
 │    - 23/89 vendors flagged          │
-│    - URL: hxxp://evil[.]com         │
-│                                     │
-│ 🟠 Sender IP Flagged (AbuseIPDB)    │
-│    - 87% abuse confidence           │
-│    - 15 abuse reports               │
+│ 🟠 Urgency manipulation             │
+│ 🟠 Brand impersonation              │
 └─────────────────────────────────────┘
 ```
 
 **Acceptance Criteria:**
-- Threat intel threats clearly separated from Claude threats
-- Service badges visible (VirusTotal, AbuseIPDB logos/text)
-- Color coding matches severity
-- Performance section shows enrichment latency
+- Reasoning chain clearly displayed
+- Tool calls shown with results
+- User understands WHY agent made decision
+- Professional visual design
+- Mobile-responsive
 
 **Files to Modify:**
 - `lib/html-generator.ts`
+- `types/email.ts` (add reasoning chain types)
+
+**Branch:** `feature/5-reasoning-reports`
 
 ---
 
-### 📋 Phase 3: Confidence Score Algorithm
+### 🔄 Phase 6: Testing & Validation (Issue #6)
 
-**Goal:** Implement intelligent confidence score calculation
+**Goal:** Comprehensive testing of agentic system
 
-**Logic:**
-```typescript
-function calculateConfidence(
-  claudeConfidence: number,
-  threatIntelRisk: number,
-  crossValidation: boolean
-): number {
-  let finalConfidence = claudeConfidence;
+**Test Scenarios:**
+1. **Safe email** - Claude decides no tools needed
+2. **Phishing with suspicious URL** - Claude calls check_url_reputation
+3. **Phishing with bad IP** - Claude calls check_ip_reputation
+4. **API failure** - Tools fail, Claude reasons without them
+5. **Cache hit** - Second identical email uses cached results
+6. **No API keys** - System works with local tools only
 
-  // Boost confidence if both systems agree
-  if (crossValidation) {
-    finalConfidence = Math.min(100, claudeConfidence + 15);
-  }
+**Test Coverage:**
+- Unit tests for each tool
+- Integration tests for tool execution loop
+- End-to-end tests with real emails
+- Performance tests (latency under 10s)
 
-  // Add risk contribution from threat intel
-  finalConfidence += threatIntelRisk;
+**Files to Create/Modify:**
+- `tests/agent.test.ts` (NEW - agentic tests)
+- `tests/tools.test.ts` (NEW - tool tests)
+- Update existing tests for new architecture
 
-  // Cap at 100
-  return Math.min(100, finalConfidence);
-}
-```
-
-**Cross-Validation Scenarios:**
-- Both say phishing → +15% confidence boost
-- Claude says phishing, threat intel neutral → No change
-- Claude says safe, threat intel finds malicious URL → Override to suspicious/phishing
-
-**Acceptance Criteria:**
-- Confidence scores are higher when both systems agree
-- Known malicious URLs always trigger at least "suspicious" verdict
-- System never reduces confidence from threat intel
-
-**Files to Modify:**
-- `lib/claude-analyzer.ts` (add merging logic) OR
-- Create new `lib/analysis-merger.ts` for separation of concerns
-
----
-
-### 📋 Phase 4: Testing & Validation
-
-**Goal:** Ensure threat intel works correctly across scenarios
-
-**Test Cases:**
-1. **All APIs Enabled** - Verify parallel execution and caching
-2. **No API Keys** - Ensure graceful fallback to Claude-only
-3. **Mixed Keys** - Works with only VirusTotal or only AbuseIPDB
-4. **Known Malicious URL** - Test with URL known to be flagged
-5. **Redis Cache Hit** - Verify second request uses cache
-6. **API Timeout** - Verify 3s timeout doesn't block request
-7. **API Error** - Verify error handling doesn't crash webhook
-
-**Files to Create:**
-- `tests/threat-intel.test.ts` - Unit tests for service
-- `tests/integration.test.ts` - End-to-end tests
-
----
-
-### 📋 Phase 5: Documentation & Deployment
-
-**Goal:** Update docs and deploy to production
-
-**Tasks:**
-1. Update README.md with threat intel setup instructions
-2. Add API key acquisition guide (VirusTotal, AbuseIPDB)
-3. Update architecture diagram to show threat intel
-4. Add cost analysis section (API pricing)
-5. Create troubleshooting guide for API errors
-6. Deploy to Vercel with new environment variables
-
-**Acceptance Criteria:**
-- README has clear setup instructions for each API
-- Architecture diagram shows parallel execution
-- Cost analysis includes API pricing tiers
-- Deployed and working in production
-
-**Files to Modify:**
-- `README.md`
+**Branch:** `feature/6-testing-validation`
 
 ---
 
@@ -326,41 +396,53 @@ function calculateConfidence(
 
 ---
 
-## Next Steps
+## Next Steps (v1.1 Implementation)
 
-### Immediate (This Sprint):
-1. ✅ Complete Phase 0: Scaffolding (DONE)
-2. 🔲 Start Phase 1: Integration with main pipeline
-3. 🔲 Set up test VirusTotal/AbuseIPDB accounts
-4. 🔲 Test with known malicious URLs
+### Phase 1: Documentation (IN PROGRESS)
+- 🔄 Update THREAT_INTEL_ROADMAP.md (this file)
+- ⏳ Update CLAUDE.md with agent architecture
+- ⏳ Update SPEC.md with tool use details
+- ⏳ Update README.md with agentic features
 
-### Near Term (Next Sprint):
-1. Complete Phase 2: Enhanced HTML reporting
-2. Complete Phase 3: Confidence score algorithm
-3. Begin Phase 4: Testing & validation
+### Phase 2: GitHub Issues (NEXT)
+- Create Issue #1: Tool use framework
+- Create Issue #2: Local analysis tools
+- Create Issue #3: Threat intel tools
+- Create Issue #4: Webhook integration
+- Create Issue #5: Reasoning chain reports
+- Create Issue #6: Testing & validation
 
-### Future:
+### Phase 3-8: Feature Branches
+- Implement each feature in dedicated branch
+- Create PR for each feature
+- User reviews and merges
+- Proceed to next feature
+
+### Future (v1.2+):
 1. Add WHOIS API integration for domain age checking
 2. Add SSL certificate validation
 3. Consider additional threat intel sources (Shodan, AlienVault OTX)
-4. Machine learning model to weight different signals
+4. Add conversation memory (multi-email context)
+5. Machine learning model to weight different signals
 
 ---
 
-## Questions & Decisions
+## Key Decisions (v1.1)
 
 ### Decided:
-- ✅ Use Upstash Redis for caching (not NodeCache)
-- ✅ 3-second timeout per service
-- ✅ Parallel execution with Promise.all
+- ✅ Use Claude tool use (not blind parallel execution)
+- ✅ Threat intel as tools (not always-on APIs)
+- ✅ Use Upstash Redis for caching
+- ✅ 3-second timeout per tool
 - ✅ Optional API keys with graceful degradation
-- ✅ Merge threat intel into existing EmailAnalysis type
+- ✅ Display reasoning chains in HTML reports
+- ✅ Implement proper git workflow (feature branches, PRs)
 
-### To Decide:
-- 🤔 Should threat intel override Claude's verdict? (Lean: Yes for known malicious)
-- 🤔 Should we submit URLs to URLScan for live scanning? (Lean: No, too slow)
-- 🤔 Should we store analysis history? (Lean: Future phase)
-- 🤔 Should we add webhook for abuse reports? (Lean: Future)
+### Architecture Choices:
+- ✅ Tools decide when to call external APIs (60% cost savings)
+- ✅ Local tools first, external APIs only when needed
+- ✅ Reasoning chain recorded and displayed to users
+- ✅ Fail gracefully if tools unavailable
 
 ---
 
@@ -385,6 +467,7 @@ If threat intel causes issues in production:
 
 ---
 
-**Last Updated:** 2025-10-23
-**Status:** Phase 0 Complete, Ready for Phase 1
-**Next Review:** After Phase 1 completion
+**Last Updated:** 2025-10-24
+**Version:** v1.1 (Agentic Architecture)
+**Status:** Documentation phase complete, implementation starting
+**Next Review:** After each phase completion

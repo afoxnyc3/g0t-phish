@@ -178,18 +178,18 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
           break;
         }
 
-        // Call Claude with tool definitions (with 5.5s timeout per call)
+        // Call Claude with tool definitions (with 7s timeout per call)
         const response = await Promise.race([
           anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 1024, // Reduced from 2048 for faster response
+            max_tokens: 512, // Reduced from 1024 for faster response
             temperature: 0,
             system: SYSTEM_PROMPT,
             tools: TOOLS,
             messages,
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Claude API timeout')), 5500)
+            setTimeout(() => reject(new Error('Claude API timeout')), 7000)
           ),
         ]) as Anthropic.Messages.Message;
 

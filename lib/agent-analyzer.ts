@@ -11,10 +11,10 @@ const anthropic = new Anthropic({
 });
 
 // Maximum tool calls to prevent timeout (10s Vercel limit)
-const MAX_TOOL_CALLS = 5;
-const MAX_TOOL_LOOP_TIME_MS = 7000; // Reserve 2-3s for final Claude response
-const MAX_ANALYSIS_TIME_MS = 9000; // Overall budget (leave 1s for processing)
-const MIN_FALLBACK_TIME_MS = 3000; // Minimum time needed for fallback analysis
+const MAX_TOOL_CALLS = 3; // Reduced from 5 to prevent timeout
+const MAX_TOOL_LOOP_TIME_MS = 5000; // Reduced from 7000 - Reserve 3-4s for final Claude response
+const MAX_ANALYSIS_TIME_MS = 8000; // Reduced from 9000 - Overall budget (leave 2s for processing)
+const MIN_FALLBACK_TIME_MS = 2500; // Reduced from 3000 - Minimum time needed for fallback analysis
 
 /**
  * System prompt for agentic analysis with tool use (v1.1)

@@ -38,7 +38,7 @@ const SYSTEM_PROMPT = `You are an expert email security analyst with access to a
 - **Suspicious (31-69%)**: Minor red flags, unverified sender, unusual patterns (requires user caution)
 - **Phishing (70-100%)**: Multiple threats, failed authentication, clear malicious intent
 
-**After gathering information with tools, return your analysis in this exact JSON structure (no markdown)**:
+**CRITICAL: After gathering information with tools, you MUST return ONLY valid JSON in this exact structure. Do NOT return natural language text, markdown, or explanations. ONLY return the raw JSON object**:
 {
   "verdict": "safe" | "suspicious" | "phishing",
   "confidence": 0-100,
@@ -58,7 +58,9 @@ const SYSTEM_PROMPT = `You are an expert email security analyst with access to a
   },
   "summary": "2-3 sentence overall assessment for the user",
   "reasoning": ["Step 1: analyzed headers", "Step 2: checked authentication", ...]
-}`;
+}
+
+IMPORTANT: Return ONLY the JSON object. Do not include any text before or after the JSON.`;
 
 /**
  * Tool definitions for Claude
@@ -463,10 +465,18 @@ function parseFinalResponse(
 
   // Parse JSON (strip markdown if present)
   let jsonText = textBlock.text.trim();
+
+  // Strip markdown code blocks if present
   if (jsonText.startsWith('```json')) {
     jsonText = jsonText.replace(/^```json\s*\n/, '').replace(/\n```\s*$/, '');
   } else if (jsonText.startsWith('```')) {
     jsonText = jsonText.replace(/^```\s*\n/, '').replace(/\n```\s*$/, '');
+  }
+
+  // Try to extract JSON if Claude added text before/after
+  const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    jsonText = jsonMatch[0];
   }
 
   const parsed = JSON.parse(jsonText);

@@ -8,7 +8,7 @@
  *
  * Adapted for Vercel serverless:
  * - Uses Upstash Redis for caching (not NodeCache)
- * - Aggressive timeouts (3s per service)
+ * - Aggressive timeouts (2s per service to avoid Vercel 10s limit)
  * - Parallel execution with Promise.allSettled
  * - Graceful degradation if APIs unavailable
  */
@@ -138,7 +138,7 @@ export class ThreatIntelService {
       this.virusTotalClient = axios.create({
         baseURL: 'https://www.virustotal.com/api/v3',
         headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY },
-        timeout: 3000, // 3s timeout for serverless
+        timeout: 2000, // 2s timeout to avoid Vercel 10s limit
       });
       hasAnyClient = true;
     }
@@ -148,7 +148,7 @@ export class ThreatIntelService {
       this.abuseIpDbClient = axios.create({
         baseURL: 'https://api.abuseipdb.com/api/v2',
         headers: { Key: process.env.ABUSEIPDB_API_KEY },
-        timeout: 3000,
+        timeout: 2000, // 2s timeout to avoid Vercel 10s limit
       });
       hasAnyClient = true;
     }
@@ -158,7 +158,7 @@ export class ThreatIntelService {
       this.urlScanClient = axios.create({
         baseURL: 'https://urlscan.io/api/v1',
         headers: { 'API-Key': process.env.URLSCAN_API_KEY },
-        timeout: 3000,
+        timeout: 2000, // 2s timeout to avoid Vercel 10s limit
       });
       hasAnyClient = true;
     }

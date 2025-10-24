@@ -1,7 +1,7 @@
 // app/api/inbound/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { SendGridInboundWebhook, EmailInput } from '@/types/email';
-import { analyzeEmail } from '@/lib/claude-analyzer';
+import { analyzeWithTools } from '@/lib/agent-analyzer';
 import { detectEmailLoop } from '@/lib/email-loop-prevention';
 import { checkRateLimit, checkDeduplication } from '@/lib/rate-limiter';
 import { sendAnalysisEmail } from '@/lib/resend-sender';
@@ -87,14 +87,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // All checks passed - analyze with Claude
-    const analysis = await analyzeEmail(email);
+    // All checks passed - analyze with Claude agent (v1.1 with tool use)
+    const analysis = await analyzeWithTools(email);
 
     logger.info('Analysis completed', {
       requestId,
       verdict: analysis.verdict,
       confidence: analysis.confidence,
       latency: analysis.metadata.latency,
+      toolCalls: analysis.toolCalls?.length || 0,
+      toolExecutionTime: analysis.metadata.toolExecutionTime,
+      toolsUsed: analysis.toolCalls?.map(t => t.name) || [],
     });
 
     // Send analysis email to user

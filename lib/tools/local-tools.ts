@@ -187,7 +187,9 @@ export function checkAuthentication(input: {
       if (dkimLower.includes('dkim=pass')) dkim = 'pass';
       else if (dkimLower.includes('dkim=fail')) dkim = 'fail';
       else if (dkimLower.includes('dkim=neutral')) dkim = 'neutral';
-      else if (dkimHeader.includes('v=1')) dkim = 'pass'; // DKIM signature present
+      // Note: Do NOT check for signature presence (v=1) alone
+      // DKIM-Signature header is added by sender, not validator
+      // Only trust explicit dkim=pass/fail from Authentication-Results
     }
 
     // Parse DMARC

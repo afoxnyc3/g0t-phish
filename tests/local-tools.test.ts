@@ -118,7 +118,9 @@ describe('Local Analysis Tools', () => {
       expect(result.data.spf).toBe('softfail');
     });
 
-    it('should parse DKIM pass from signature header', () => {
+    it('should NOT mark DKIM pass from signature header alone', () => {
+      // SECURITY: DKIM-Signature header is added by sender, not validator
+      // Presence of signature does not mean validation passed
       const result = checkAuthentication({
         headers: {
           'dkim-signature': 'v=1; a=rsa-sha256; d=example.com',
@@ -126,7 +128,20 @@ describe('Local Analysis Tools', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data.dkim).toBe('pass');
+      expect(result.data.dkim).toBe('none'); // Changed from 'pass' - signature presence ≠ valid
+    });
+
+    it('should reject forged DKIM signatures (security test)', () => {
+      // SECURITY TEST: Attacker adds forged DKIM-Signature header
+      // This should NOT be marked as 'pass' since there's no validation result
+      const result = checkAuthentication({
+        headers: {
+          'dkim-signature': 'v=1; a=rsa-sha256; d=paypal.com; s=forged',
+        },
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.dkim).toBe('none'); // Forged signature not marked as valid
     });
 
     it('should parse DKIM from authentication-results', () => {
@@ -166,8 +181,7 @@ describe('Local Analysis Tools', () => {
       const result = checkAuthentication({
         headers: {
           'received-spf': 'pass',
-          'dkim-signature': 'v=1; a=rsa-sha256; d=example.com',
-          'authentication-results': 'dmarc=pass',
+          'authentication-results': 'mx.google.com; dkim=pass header.d=example.com; dmarc=pass',
         },
       });
 

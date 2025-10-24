@@ -1,81 +1,191 @@
 # g0t-phish: Claude Code Agent Instructions
 
-**Version:** 1.0.0
-**Last Updated:** 2025-10-23
+**Version:** 1.1.0 (Agentic Architecture)
+**Last Updated:** 2025-10-24
 **Purpose:** Definitive guide for AI agents working on this codebase
 
 ---
 
 ## Mission
 
-g0t-phish is a **production serverless email phishing detection agent**. Users forward suspicious emails to a configured address and receive AI-powered security analysis in 2-3 seconds via automated HTML email response.
+g0t-phish is a **production serverless AI agent** for email phishing detection. Users forward suspicious emails to a configured address and receive AI-powered security analysis in 2-3 seconds via automated HTML email response.
 
-**Core Goal:** Detect phishing attempts using Claude AI with 5-layer loop prevention, rate limiting, and cost optimization ($2-10/month operational target).
+**Core Goal:** Detect phishing attempts using an **autonomous Claude AI agent** with tool use capabilities, integrated threat intelligence, 5-layer security, and intelligent cost optimization ($2-10/month target).
+
+**Key Innovation (v1.1):** Claude operates as a true **agent** that autonomously decides which tools to use (local analysis tools + external threat intelligence APIs) based on email content, providing explainable reasoning chains to users.
 
 ---
 
-## Current Stack (v1.0 MVP - Production)
+## Current Stack (v1.1 - Agentic Architecture)
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **Framework** | Next.js 14.2.5 | Serverless API routes |
 | **Language** | TypeScript 5.5.3 | Type safety |
 | **Validation** | Zod 3.23.8 | Runtime type checking |
-| **AI** | Anthropic Claude Haiku 4.5 | Phishing analysis |
-| **Email** | Resend 3.2.0 | Inbound webhooks + outbound |
-| **Database** | Upstash Redis 1.28.2 | Rate limiting + deduplication |
+| **AI Agent** | Anthropic Claude Haiku 4.5 | **Agentic analysis with tool use** |
+| **Email Inbound** | SendGrid Inbound Parse | Receiving forwarded emails |
+| **Email Outbound** | Resend 3.2.0 | Sending analysis reports |
+| **Database** | Upstash Redis 1.28.2 | Rate limiting + caching |
+| **Threat Intel** | VirusTotal, AbuseIPDB | External threat databases (tools) |
 | **Hosting** | Vercel (Hobby tier) | Serverless deployment |
 | **Testing** | Jest 29.7.0 | Unit tests |
 
-**Dependencies:** Minimal by design (6 production deps) for fast cold starts.
+**Dependencies:** 8 production deps (added axios for APIs)
 
 ---
 
-## Architecture (Actual Implementation)
+## Architecture (v1.1 - Agentic Implementation)
 
 ### Request Flow
 
 ```
-Email → Resend Webhook → /api/inbound → 5 Security Layers → Claude AI → HTML Report → Resend → User
-                             ↓
-                    1. Loop Detection
-                    2. Rate Limiting (10/hr per sender, 100/hr global)
-                    3. Deduplication (SHA-256)
-                    4. Circuit Breaker (50/10min)
-                    5. Validation (Zod)
+Email → SendGrid → /api/inbound → 5 Security Layers → Claude Agent → HTML Report → Resend → User
+                        ↓                                   ↓
+                  Security Checks                    Tool Use Loop
+                  1. Loop Detection                   ├─ extract_urls
+                  2. Rate Limiting                    ├─ check_authentication
+                  3. Deduplication                    ├─ analyze_sender
+                  4. Circuit Breaker                  ├─ check_url_reputation (VirusTotal)
+                  5. Validation (Zod)                 └─ check_ip_reputation (AbuseIPDB)
+                                                            ↓
+                                                      Autonomous Decision Making
+                                                      ↓
+                                                   Reasoning Chain
+                                                   + Verdict + Evidence
 ```
 
-**Target Latency:** 2-3 seconds end-to-end
-**Timeout Limit:** 10 seconds (Vercel Hobby tier)
+### Agentic Decision Flow
 
-### File Structure (Actual Code)
+```
+1. Email received with suspicious URL
+2. Claude analyzes: "I see 'paypa1.com' - likely typosquatting"
+3. Claude decides: "I should verify this URL"
+4. Claude calls: check_url_reputation("http://paypa1.com")
+5. System executes: VirusTotal API → "23/89 vendors flagged"
+6. Claude receives result and reasons: "Confirmed phishing with evidence"
+7. Claude returns: PHISHING verdict (95% confidence) + reasoning chain
+```
+
+**Target Latency:** 2-4 seconds end-to-end (including tool calls)
+**Timeout Limit:** 10 seconds (Vercel Hobby tier)
+**Tool Call Budget:** Max 5 tool calls per email to stay within timeout
+
+### File Structure (v1.1 Code)
 
 ```
 app/
 ├── api/
-│   ├── inbound/route.ts        # Main webhook (178 lines) - orchestrates entire flow
+│   ├── inbound/route.ts        # Main webhook (~200 lines) - orchestrates flow + tool routing
 │   └── health/route.ts         # Health check (11 lines)
 │
 lib/
-├── claude-analyzer.ts          # Claude AI integration (146 lines)
+├── agent-analyzer.ts           # [NEW v1.1] Agentic Claude with tool use (~300 lines)
+├── claude-analyzer.ts          # [LEGACY v1.0] Simple Claude API call (kept for fallback)
+├── tools/
+│   ├── local-tools.ts          # [NEW] extract_urls, check_auth, analyze_sender (~150 lines)
+│   └── threat-intel-tools.ts   # [NEW] check_url_reputation, check_ip_reputation (~200 lines)
+├── threat-intel.ts             # External threat API service (450 lines) - now used by tools
 ├── email-loop-prevention.ts    # 4-layer loop detection (109 lines)
 ├── rate-limiter.ts             # Redis rate limiting + deduplication (168 lines)
-├── html-generator.ts           # HTML email report formatting (163 lines)
-├── resend-sender.ts            # Outbound email sending (64 lines)
-└── threat-intel.ts             # [v2.0 FUTURE] External threat APIs (450 lines)
+├── html-generator.ts           # HTML report + reasoning chain (~250 lines updated)
+└── resend-sender.ts            # Outbound email sending (64 lines)
 │
 types/
-└── email.ts                    # TypeScript interfaces (89 lines)
+└── email.ts                    # TypeScript interfaces + tool types (~150 lines updated)
 │
 utils/
 └── logger.ts                   # Structured logging (36 lines)
 │
 tests/
-└── email-loop.test.ts          # Unit tests (117 lines) - 8 test cases
+├── email-loop.test.ts          # Loop detection tests (117 lines)
+├── agent.test.ts               # [NEW] Agentic workflow tests
+├── tools.test.ts               # [NEW] Tool execution tests
+└── integration.test.ts         # [NEW] End-to-end tests
 ```
 
-**Total Business Logic:** ~660 lines
-**Test Coverage:** 90%+ (critical paths 100%)
+**Total Business Logic:** ~1,400 lines (doubled from v1.0)
+**New Code:** ~750 lines (agentic framework + tools)
+**Test Coverage Target:** 90%+ (agentic paths 100%)
+
+---
+
+## Agentic Architecture (v1.1 Key Feature)
+
+### What Makes This a TRUE Agent?
+
+**v1.0 (Simple Workflow):**
+```typescript
+// Fixed pipeline: prompt → Claude → response
+const analysis = await claude.messages.create({
+  messages: [{ role: "user", content: formatEmail(email) }]
+});
+// Claude returns verdict (one-shot, no decisions)
+```
+
+**v1.1 (Agentic with Tools):**
+```typescript
+// Claude makes autonomous decisions about which tools to use
+const tools = [
+  { name: "extract_urls", description: "..." },
+  { name: "check_url_reputation", description: "..." },
+  // ... more tools
+];
+
+// Multi-turn conversation with tool execution
+let messages = [{ role: "user", content: formatEmail(email) }];
+while (true) {
+  const response = await claude.messages.create({ tools, messages });
+
+  if (response.stop_reason === "tool_use") {
+    // Claude decided to call a tool
+    const toolUse = response.content.find(c => c.type === "tool_use");
+    const result = await executeTool(toolUse.name, toolUse.input);
+
+    // Send result back to Claude
+    messages.push({ role: "assistant", content: response.content });
+    messages.push({ role: "user", content: [{ type: "tool_result", ... }] });
+
+    continue; // Claude iterates with new information
+  }
+
+  // Claude finished reasoning
+  return parseAnalysis(response);
+}
+```
+
+### Available Tools (v1.1)
+
+**Local Analysis Tools** (fast, always available):
+1. **extract_urls** - Extract and validate URLs from email body
+2. **check_authentication** - Parse and validate SPF/DKIM/DMARC headers
+3. **analyze_sender** - Check sender domain for spoofing patterns
+
+**External Threat Intel Tools** (slower, called only when needed):
+4. **check_url_reputation** - Query VirusTotal for URL maliciousness (23/89 vendors flagged)
+5. **check_ip_reputation** - Query AbuseIPDB for IP abuse score (87% confidence)
+
+### Tool Usage Intelligence
+
+**Claude decides contextually:**
+- Safe-looking email from Gmail → No external tools needed (save API calls)
+- Suspicious URL like `paypa1.com` → Calls check_url_reputation to verify
+- Known good domain → Skips reputation check
+- Multiple suspicious signals → May call multiple tools for confirmation
+
+**Cost Savings:** ~60% reduction in API calls vs. always-on approach
+
+### Reasoning Chain
+
+Every analysis includes Claude's decision-making process:
+```
+User: "Analyze this email for phishing"
+Agent: "I notice the sender domain 'paypa1-security.com' uses '1' instead of 'l'"
+Agent: "This is a typosquatting pattern. Let me verify the URL reputation."
+Agent: *calls check_url_reputation*
+Tool: "VirusTotal reports 23/89 vendors flagged this URL as malicious"
+Agent: "Combined with urgency language and authentication failure, this is PHISHING (95% confidence)"
+```
 
 ---
 
@@ -342,7 +452,7 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 | **CLAUDE.md** (this file) | AI agent instructions | Always read first |
 | **README.md** | User-facing guide | For setup and usage |
 | **SPEC.md** | Technical reference | For architecture and APIs |
-| **THREAT_INTEL_ROADMAP.md** | v2.0 future plan | For future enhancements |
+| **THREAT_INTEL_ROADMAP.md** | v1.1 agentic plan | For implementation roadmap |
 | **types/email.ts** | Data model definitions | For TypeScript interfaces |
 
 ---
@@ -360,17 +470,20 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 ## Key Principles
 
-1. **MVP First** - v1.0 must be rock-solid before v2.0
-2. **Serverless-Optimized** - Fast cold starts, stateless design
-3. **Cost-Conscious** - Stay within free tiers when possible
-4. **Security-First** - Loop prevention is non-negotiable
-5. **User-Focused** - 2-3s response time, clear verdicts
-6. **Production-Ready** - Error handling, logging, monitoring
+1. **Agentic First** - v1.1 makes Claude a true autonomous agent with tool use
+2. **Intelligent Tool Use** - Only call external APIs when Claude decides it's necessary
+3. **Explainable AI** - Show reasoning chains so users understand WHY decisions were made
+4. **Serverless-Optimized** - Fast cold starts, stateless design
+5. **Cost-Conscious** - 60% API savings through intelligent decision-making
+6. **Security-First** - 5-layer loop prevention is non-negotiable
+7. **User-Focused** - 2-4s response time, clear verdicts with evidence
+8. **Production-Ready** - Error handling, logging, graceful degradation
 
 ---
 
-**Last Updated:** 2025-10-23
-**Current Version:** 1.0.0 (Production)
-**Next Version:** 2.0.0 (Threat Intelligence - Planned)
+**Last Updated:** 2025-10-24
+**Current Version:** 1.1.0 (Agentic Architecture - In Development)
+**Previous Version:** 1.0.0 (Simple Workflow - Production Stable)
+**Next Version:** 1.2.0 (Conversation Memory - Future)
 
 Built with ❤️ for secure email communications.

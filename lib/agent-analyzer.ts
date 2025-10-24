@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam, Tool, ToolUseBlock, TextBlock } from '@anthropic-ai/sdk/resources/messages';
 import { EmailInput, EmailAnalysis, ToolCall, ToolResult } from '@/types/email';
 import { logger } from '@/utils/logger';
+import { extractUrls, checkAuthentication, analyzeSender } from './tools/local-tools';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -329,45 +330,61 @@ export async function analyzeWithTools(email: EmailInput): Promise<EmailAnalysis
 }
 
 /**
- * Execute a tool (stub implementations for Issue #1)
- * Real implementations will come in Issues #2 and #3
+ * Execute a tool (local tools implemented in Issue #2)
+ * Threat intel tools will come in Issue #3
  */
 async function executeTool(
   name: string,
   input: Record<string, any>,
   email: EmailInput
 ): Promise<ToolResult> {
-  // For Issue #1, return stub responses
-  // Real implementations coming in Issue #2 (local tools) and Issue #3 (threat intel)
-
   switch (name) {
-    case 'extract_urls':
+    case 'extract_urls': {
+      const result = extractUrls({
+        email_body: input.email_body || email.body,
+        email_html: input.email_html,
+      });
       return {
-        success: true,
-        data: { urls: [] },
+        ...result,
         source: 'local',
       };
+    }
 
-    case 'check_authentication':
+    case 'check_authentication': {
+      const result = checkAuthentication({
+        headers: input.headers || email.headers,
+      });
       return {
-        success: true,
-        data: {
-          spf: 'none',
-          dkim: 'none',
-          dmarc: 'none',
-        },
+        ...result,
         source: 'local',
       };
+    }
 
-    case 'analyze_sender':
+    case 'analyze_sender': {
+      const result = analyzeSender({
+        from: input.from || email.from,
+        display_name: input.display_name,
+        subject: input.subject || email.subject,
+      });
       return {
-        success: true,
-        data: {
-          domain: email.from.split('@')[1] || 'unknown',
-          is_suspicious: false,
-          spoofing_indicators: [],
-        },
+        ...result,
         source: 'local',
+      };
+    }
+
+    // Threat intel tools (Issue #3 - stubs for now)
+    case 'check_url_reputation':
+      return {
+        success: false,
+        error: 'Tool not yet implemented (Issue #3)',
+        source: 'virustotal',
+      };
+
+    case 'check_ip_reputation':
+      return {
+        success: false,
+        error: 'Tool not yet implemented (Issue #3)',
+        source: 'abuseipdb',
       };
 
     default:

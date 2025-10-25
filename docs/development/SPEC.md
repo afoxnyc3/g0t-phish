@@ -2,7 +2,7 @@
 
 **Version:** 1.1.0 (Agentic Architecture)
 **Last Updated:** 2025-10-24
-**Status:** In Development (v1.0 Production Stable)
+**Status:** ✅ Production-Ready (v1.1 Complete & Deployed)
 
 ---
 
@@ -71,7 +71,7 @@ g0t-phish is a serverless AI agent for email phishing detection. It uses Claude'
 ```
 
 **Total Latency:** 2-4 seconds end-to-end (varies with tool usage)
-**Timeout Limit:** 10 seconds (Vercel Hobby tier)
+**Timeout Limit:** 10 seconds (Vercel Pro tier)
 **Tool Budget:** Max 5 tool calls per email to stay within timeout
 
 ---
@@ -695,8 +695,8 @@ See `THREAT_INTEL_ROADMAP.md` for detailed roadmap. **v1.1 includes core agentic
 - Machine learning model to weight signals from different tools
 
 **Current Status:**
-- ✅ v1.0: Production (Claude-only workflow)
-- 🔄 v1.1: In Development (Agentic architecture + intelligent threat intel)
+- ✅ v1.0: Production Stable (Claude-only workflow)
+- ✅ v1.1: Production-Ready (Agentic architecture + intelligent threat intel)
 
 ---
 
@@ -711,4 +711,4 @@ See `THREAT_INTEL_ROADMAP.md` for detailed roadmap. **v1.1 includes core agentic
 
 **Document Version:** 1.1.0 (Agentic Architecture)
 **Last Updated:** 2025-10-24
-**Status:** v1.0 Production Ready | v1.1 In Development
+**Status:** ✅ v1.1 Production-Ready & Deployed

@@ -332,13 +332,13 @@ See **[SPEC.md](./docs/development/SPEC.md)** for detailed development guide, AP
 ## Cost Estimate
 
 ### Typical Usage (1,000 emails/month with v1.1 Threat Intel)
-- **Vercel**: $0 (Hobby tier)
+- **Vercel Pro**: $20/month (required for 60s timeout)
 - **Resend**: $0 (within 100/day limit)
 - **Claude API**: ~$0.75 (includes tool use tokens)
 - **VirusTotal**: $0 (~400 URL checks, within free tier)
 - **AbuseIPDB**: $0 (~200 IP checks, within free tier)
 - **Upstash Redis**: $0 (within free tier)
-- **Total**: **~$0.75/month**
+- **Total**: **~$20.75/month**
 
 **Cost Savings:**
 - 60% fewer API calls (intelligent tool use vs. always-on)

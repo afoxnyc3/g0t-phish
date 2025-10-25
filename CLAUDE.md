@@ -28,7 +28,7 @@ g0t-phish is a **production serverless AI agent** for email phishing detection. 
 | **Email Outbound** | Resend 3.2.0 | Sending analysis reports |
 | **Database** | Upstash Redis 1.28.2 | Rate limiting + caching |
 | **Threat Intel** | VirusTotal, AbuseIPDB | External threat databases (tools) |
-| **Hosting** | Vercel (Hobby tier) | Serverless deployment |
+| **Hosting** | Vercel (Pro tier) | Serverless deployment (60s timeout) |
 | **Testing** | Jest 29.7.0 | Unit tests |
 
 **Dependencies:** 8 production deps (added axios for APIs)
@@ -68,8 +68,8 @@ Email → SendGrid → /api/inbound → 5 Security Layers → Claude Agent → H
 ```
 
 **Target Latency:** 2-4 seconds end-to-end (including tool calls)
-**Timeout Limit:** 10 seconds (Vercel Hobby tier)
-**Tool Call Budget:** Max 5 tool calls per email to stay within timeout
+**Timeout Limit:** 60 seconds (Vercel Pro tier)
+**Tool Call Budget:** Max 5 tool calls per email for optimal performance
 
 ### File Structure (v1.1 Code)
 
@@ -99,14 +99,13 @@ utils/
 │
 tests/
 ├── email-loop.test.ts          # Loop detection tests (117 lines)
-├── agent.test.ts               # [NEW] Agentic workflow tests
-├── tools.test.ts               # [NEW] Tool execution tests
-└── integration.test.ts         # [NEW] End-to-end tests
+├── local-tools.test.ts         # Local tool execution tests
+└── threat-intel-tools.test.ts  # Threat intelligence tool tests
 ```
 
 **Total Business Logic:** ~1,400 lines (doubled from v1.0)
 **New Code:** ~750 lines (agentic framework + tools)
-**Test Coverage Target:** 90%+ (agentic paths 100%)
+**Test Coverage:** 90%+ business logic, 100% security-critical paths
 
 ---
 
@@ -192,8 +191,8 @@ Agent: "Combined with urgency language and authentication failure, this is PHISH
 ## Critical Constraints
 
 ### Performance
-- **10-second Vercel timeout** (Hobby tier) - HARD LIMIT
-- **Target: 2-3s end-to-end** (Claude analysis ~1-2s)
+- **60-second Vercel timeout** (Pro tier) - HARD LIMIT
+- **Target: 2-4s end-to-end** (Claude agent with tool use ~1-3s)
 - **Cold start:** 200-500ms (minimal dependencies)
 
 ### Cost
@@ -217,7 +216,7 @@ Agent: "Combined with urgency language and authentication failure, this is PHISH
 
 ### 1. Webhook Handler (`app/api/inbound/route.ts`)
 
-**Purpose:** Receives Resend webhooks, orchestrates security checks, triggers analysis
+**Purpose:** Receives SendGrid webhooks, orchestrates security checks, triggers agentic analysis
 
 **Flow:**
 1. Validate payload with Zod schema
@@ -242,22 +241,25 @@ const analysis = await analyzeEmail(email);
 await sendAnalysisEmail({ to: email.from, analysis });
 ```
 
-### 2. Claude AI Analysis (`lib/claude-analyzer.ts`)
+### 2. Agent Analyzer (`lib/agent-analyzer.ts`)
 
 **Model:** `claude-haiku-4-5-20251001` (fastest, cheapest)
-**Config:** Temperature 0 (deterministic), max_tokens 2048
+**Config:** Temperature 0 (deterministic), max_tokens 4096, tool use enabled
 **Input:** Formatted email with headers, body, authentication data
-**Output:** JSON with verdict, confidence, threats, authentication status
+**Output:** JSON with verdict, confidence, threats, tool calls, reasoning chain
 
-**System Prompt Instructs:**
-- Check SPF/DKIM/DMARC authentication
-- Detect sender spoofing, malicious links, social engineering
-- Return structured JSON (no markdown)
+**Agentic Capabilities:**
+- Autonomous tool selection based on email content
+- Multi-turn conversation with tool execution
+- Reasoning chain explaining decision-making process
+- Graceful degradation if tools fail
 
 **Verdict Categories:**
 - `safe` (0-30%): No threats, authentication passes
 - `suspicious` (31-69%): Some red flags, caution advised
 - `phishing` (70-100%): High confidence malicious
+
+**Note:** `lib/claude-analyzer.ts` is kept as v1.0 legacy fallback
 
 ### 3. Email Loop Prevention (`lib/email-loop-prevention.ts`)
 
@@ -371,13 +373,13 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 ### 🚫 Never Do These
 1. **Add heavyweight dependencies** - Breaks cold start performance
-2. **Exceed 10s timeout** - Vercel Hobby tier will kill function
+2. **Exceed 60s timeout** - Vercel Pro tier will kill function
 3. **Log email content** - PII compliance violation
 4. **Skip loop prevention** - Creates infinite recursion
-5. **Implement unvalidated features** - Stay focused on MVP
+5. **Implement unvalidated features** - Stay focused on current version
 6. **Change validation library** - Already using Zod, don't switch to Typia
 7. **Change test framework** - Already using Jest, don't switch to Vitest
-8. **Mix v1.0 and v2.0 features** - v2.0 is future (threat intel)
+8. **Break agentic tool use** - v1.1 core feature
 
 ### ⚠️ Be Careful With
 1. **External API calls** - Can timeout, always set timeout limits
@@ -390,7 +392,7 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 ## Common Tasks
 
 ### Add New Threat Detection Pattern
-1. Update Claude system prompt in `lib/claude-analyzer.ts`
+1. Update agent system prompt in `lib/agent-analyzer.ts`
 2. Add threat type to `types/email.ts`
 3. Update HTML generator in `lib/html-generator.ts`
 4. Add test cases
@@ -403,7 +405,7 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 ### Debug Email Not Received
 1. Check Vercel function logs
-2. Check Resend webhook logs
+2. Check SendGrid Inbound Parse webhook logs
 3. Verify DNS records (MX, SPF, DKIM)
 4. Test `/api/health` endpoint
 
@@ -415,19 +417,20 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 ---
 
-## v2.0 Future Features (NOT IN MVP)
+## Future Enhancements (Beyond v1.1)
 
-**Current Status:** v1.0 production (Claude-only analysis)
+**Current Status:** v1.1 production-ready with agentic architecture and threat intelligence
 
-**Planned for v2.0:**
-- Threat intelligence integration (VirusTotal, AbuseIPDB, URLScan.io)
-- Parallel execution (Claude + threat intel simultaneously)
-- URL/IP extraction and reputation checking
-- Cross-validation between AI and threat databases
+**Potential v1.2+ Features:**
+- Conversation memory (multi-email threat correlation)
+- Additional threat intel sources (URLScan.io, PhishTank)
+- User feedback loop for continuous learning
+- Advanced reporting dashboard
+- Attachment analysis capabilities
 
-**See:** `docs/development/THREAT_INTEL_ROADMAP.md` for full v2.0 plan
+**See:** `docs/development/THREAT_INTEL_ROADMAP.md` for v1.1 implementation details
 
-**Important:** Do NOT implement v2.0 features until v1.0 is stable and validated.
+**Important:** Focus on v1.1 stability and user feedback before expanding features.
 
 ---
 
@@ -435,8 +438,8 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 | Issue | Check | Solution |
 |-------|-------|----------|
-| No email received | Resend webhook logs, Vercel logs | Verify inbound route configured |
-| Claude timeout | Function duration in logs | Optimize prompt, check API status |
+| No email received | SendGrid webhook logs, Vercel logs | Verify Inbound Parse webhook configured |
+| Agent timeout | Function duration in logs | Reduce tool calls, check API status |
 | Rate limit issues | Redis keys in Upstash console | Adjust limits or clear keys |
 | Loop detected | Loop check logs | Verify agent email config |
 | Build fails | TypeScript errors | Run `npm run type-check` |
@@ -457,27 +460,27 @@ export async function analyzeEmail(email: EmailInput): Promise<EmailAnalysis> {
 
 ---
 
-## Success Criteria (v1.0 MVP)
+## Success Criteria (v1.1 Production)
 
-- ✅ <3s average response time (p95 <5s)
+- ✅ <4s average response time with tool use (p95 <8s)
 - ✅ <1% error rate over 7 days
 - ✅ Zero email loops in production
-- ✅ $2-10/month operational cost
-- ✅ >90% test coverage
-- ✅ Working deployment on Vercel
+- ✅ $0.75-10/month operational cost (60% API savings)
+- ✅ >90% test coverage (100% security-critical paths)
+- ✅ Agentic tool use operational on Vercel Pro tier
 
 ---
 
 ## Key Principles
 
-1. **Agentic First** - v1.1 makes Claude a true autonomous agent with tool use
-2. **Intelligent Tool Use** - Only call external APIs when Claude decides it's necessary
-3. **Explainable AI** - Show reasoning chains so users understand WHY decisions were made
-4. **Serverless-Optimized** - Fast cold starts, stateless design
-5. **Cost-Conscious** - 60% API savings through intelligent decision-making
+1. **Agentic Architecture** - Claude operates as autonomous agent with tool use capabilities
+2. **Intelligent Tool Selection** - Claude decides when to use external APIs based on context
+3. **Explainable AI** - Reasoning chains show WHY decisions were made
+4. **Serverless-Optimized** - Fast cold starts, stateless design, 60s timeout budget
+5. **Cost-Conscious** - 60% API cost savings through intelligent decision-making
 6. **Security-First** - 5-layer loop prevention is non-negotiable
-7. **User-Focused** - 2-4s response time, clear verdicts with evidence
-8. **Production-Ready** - Error handling, logging, graceful degradation
+7. **User-Focused** - 2-4s response time with clear verdicts and evidence
+8. **Production-Ready** - Error handling, logging, graceful degradation, fallbacks
 
 ---
 
